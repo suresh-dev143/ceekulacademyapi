@@ -1,6 +1,7 @@
 const SELECTED_ROLES = Object.freeze([
   "Student",
   "Teacher",
+  "Instructor",
   "Researcher",
   "Entrepreneur",
   "Director",

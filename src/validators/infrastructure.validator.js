@@ -8,14 +8,26 @@ const pricingSchema = z.object({
   unit: z.enum(['Hourly', 'Session']).default('Hourly')
 });
 
+const hourlySlotZodSchema = z.object({
+  time: z.string().regex(/^\d{2}:\d{2}-\d{2}:\d{2}$/, 'Slot time must be in HH:mm-HH:mm format'),
+  status: z.enum(['Available', 'Booked', 'Maintenance', 'Closed']).default('Closed'),
+  pricing: pricingSchema.optional().default({ type: 'Free', amount: 0, unit: 'Hourly' })
+});
+
 const availabilityScheduleSchema = z.object({
   day: z.enum(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']),
-  startTime: z.string().regex(timeFormatRegex, 'Start time must be in HH:mm format'),
-  endTime: z.string().regex(timeFormatRegex, 'End time must be in HH:mm format'),
+  startTime: z.string().regex(timeFormatRegex, 'Start time must be in HH:mm format').optional(),
+  endTime: z.string().regex(timeFormatRegex, 'End time must be in HH:mm format').optional(),
+  slots: z.array(hourlySlotZodSchema).optional(),
   status: z.enum(['Available', 'Booked', 'Maintenance', 'Closed']).default('Available'),
   pricing: pricingSchema.optional().default({ type: 'Free', amount: 0 }),
   notes: z.string().optional()
-}).refine(data => data.startTime < data.endTime, {
+}).refine(data => {
+  if (data.startTime && data.endTime) {
+    return data.startTime < data.endTime;
+  }
+  return true;
+}, {
   message: 'End time must be after start time',
   path: ['endTime']
 });

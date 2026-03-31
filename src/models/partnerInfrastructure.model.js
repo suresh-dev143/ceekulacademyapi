@@ -1,5 +1,35 @@
 const mongoose = require('mongoose');
 
+const hourlySlotSchema = new mongoose.Schema({
+  time: { 
+    type: String, 
+    required: [true, 'Slot time is required'],
+    match: [/^\d{2}:\d{2}-\d{2}:\d{2}$/, 'Slot time must be in HH:mm-HH:mm format']
+  },
+  status: {
+    type: String,
+    enum: ['Available', 'Booked', 'Maintenance', 'Closed'],
+    default: 'Closed'
+  },
+  pricing: {
+    type: { 
+      type: String, 
+      enum: ['Free', 'Share', 'Fixed'], 
+      default: 'Free' 
+    },
+    amount: { 
+      type: Number, 
+      min: 0, 
+      default: 0 
+    },
+    unit: { 
+      type: String, 
+      enum: ['Hourly', 'Session'], 
+      default: 'Hourly' 
+    }
+  }
+}, { _id: false });
+
 const availabilityScheduleSchema = new mongoose.Schema({
   day: {
     type: String,
@@ -8,14 +38,15 @@ const availabilityScheduleSchema = new mongoose.Schema({
   },
   startTime: {
     type: String,
-    required: [true, 'Start time is required'],
+    required: false,
     match: [/^([01]\d|2[0-3]):[0-5]\d$/, 'Start time must be in HH:mm format']
   },
   endTime: {
     type: String,
-    required: [true, 'End time is required'],
+    required: false,
     match: [/^([01]\d|2[0-3]):[0-5]\d$/, 'End time must be in HH:mm format']
   },
+  slots: [hourlySlotSchema],
   status: {
     type: String,
     required: [true, 'Status is required'],
