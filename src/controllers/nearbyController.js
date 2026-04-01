@@ -209,7 +209,8 @@ exports.getNearbyFacilities = async (req, res) => {
                             pricing: {
                                 amount: c.availabilitySchedule?.[0]?.pricing?.amount || 0,
                                 unit: c.availabilitySchedule?.[0]?.pricing?.unit || 'Hourly'
-                            }
+                            },
+                            availabilitySchedule: c.availabilitySchedule || []
                         });
                     }
                 });
@@ -231,7 +232,8 @@ exports.getNearbyFacilities = async (req, res) => {
                             pricing: {
                                 amount: c.availabilitySchedule?.[0]?.pricing?.amount || 0,
                                 unit: c.availabilitySchedule?.[0]?.pricing?.unit || 'Hourly'
-                            }
+                            },
+                            availabilitySchedule: c.availabilitySchedule || []
                         });
                     }
                 });
@@ -257,7 +259,8 @@ exports.getNearbyFacilities = async (req, res) => {
                             pricing: {
                                 amount: c.availabilitySchedule?.[0]?.pricing?.amount || 0,
                                 unit: c.availabilitySchedule?.[0]?.pricing?.unit || 'Hourly'
-                            }
+                            },
+                            availabilitySchedule: c.availabilitySchedule || []
                         });
                     }
                 });

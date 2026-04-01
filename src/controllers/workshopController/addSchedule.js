@@ -1,14 +1,10 @@
 const mongoose = require('mongoose');
 const Workshop = require('../../models/workshopModel');
+const PartnerInfrastructure = require('../../models/partnerInfrastructure.model');
 const { localToUTC, detectSessionConflicts } = require('../../utils/timezoneUtils');
 
 /**
  * Add one or more schedules to an existing workshop in a single request.
- *
- * POST /api/v1/workshops/:id/schedules
- * Body: { "schedules": [ {...}, {...} ] }
- *
- * @access Teacher (verified) — owner or enrolled Instructor, draft/published status only
  */
 const addSchedule = async (req, res) => {
   try {
@@ -69,6 +65,62 @@ const addSchedule = async (req, res) => {
           status: false,
           message: `schedules[${i}]: start date/time must be in the future`
         });
+      }
+
+      // ── NEW: Strict Infrastructure Availability Check ───────────────────────
+      if (s.mode === 'hybrid' && s.facilityId) {
+        const infra = await PartnerInfrastructure.findOne({
+          $or: [
+            { 'classrooms._id': s.facilityId },
+            { 'computerLabs._id': s.facilityId },
+            { 'otherFacilities._id': s.facilityId }
+          ]
+        });
+
+        if (!infra) {
+          return res.status(404).json({ status: false, message: `schedules[${i}]: Selected facility not found` });
+        }
+
+        // Find the specific facility using Mongoose .id() helper for subdocs
+        const facility = (infra.classrooms && infra.classrooms.id(s.facilityId)) || 
+                         (infra.computerLabs && infra.computerLabs.id(s.facilityId)) || 
+                         (infra.otherFacilities && infra.otherFacilities.id(s.facilityId));
+        
+        if (!facility) {
+          return res.status(404).json({ status: false, message: `schedules[${i}]: Facility record inconsistent` });
+        }
+
+        // Check availabilitySchedule matching by Date or Day
+        const searchDate = new Date(s.date);
+        const dayName = searchDate.toLocaleDateString('en-US', { weekday: 'long' });
+        
+        const schedule = facility.availabilitySchedule.find(as => 
+          as.date === s.date || as.day === dayName
+        );
+
+        if (!schedule || schedule.status === 'Closed') {
+          return res.status(400).json({ 
+            status: false, 
+            message: `schedules[${i}]: Facility "${facility.name}" has no available schedule on ${s.date} (${dayName})` 
+          });
+        }
+
+        // Verify specific granular slots if provided (selectedSlots)
+        // This prevents instructors from manually extending times beyond what was selected
+        const requestedSlots = s.facilityDetails?.selectedSlots || [];
+        if (requestedSlots.length > 0) {
+            const unavailable = requestedSlots.filter(t => {
+                const match = (schedule.slots || []).find(sl => sl.time === t);
+                return !match || match.status !== 'Available';
+            });
+            
+            if (unavailable.length > 0) {
+                return res.status(400).json({ 
+                    status: false, 
+                    message: `schedules[${i}]: Requested slots are unavailable or already booked: ${unavailable.join(', ')}` 
+                });
+            }
+        }
       }
     }
 
