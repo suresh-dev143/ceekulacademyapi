@@ -62,6 +62,11 @@ const scheduleSchema = new mongoose.Schema({
     enum: ['online', 'hybrid'],
     required: [true, 'Schedule mode is required']
   },
+  streamMode: {
+    type: String,
+    enum: ['live_broadcast', 'interactive_class'],
+    default: null  // Only relevant when mode === 'online'
+  },
   location: {
     type: String,
     trim: true,

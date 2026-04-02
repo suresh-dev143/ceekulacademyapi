@@ -10,6 +10,7 @@ const deleteWorkshop = require('./deleteWorkshop');
 const enrollWorkshop = require('./enrollWorkshop');
 const getMyEnrolledWorkshops = require('./getMyEnrolledWorkshops');
 const getWorkshopEnrollees = require('./getWorkshopEnrollees');
+const getAgoraToken = require('./getAgoraToken');
 
 module.exports = {
   getAllWorkshops,
@@ -23,5 +24,6 @@ module.exports = {
   deleteWorkshop,
   enrollWorkshop,
   getMyEnrolledWorkshops,
-  getWorkshopEnrollees
+  getWorkshopEnrollees,
+  getAgoraToken
 };

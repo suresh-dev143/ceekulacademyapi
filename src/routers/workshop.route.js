@@ -11,7 +11,8 @@ const {
   deleteWorkshop,
   enrollWorkshop,
   getMyEnrolledWorkshops,
-  getWorkshopEnrollees
+  getWorkshopEnrollees,
+  getAgoraToken
 } = require('../controllers/workshopController');
 const { authenticateUser } = require('../middlewares');
 const validateRequest = require('../middlewares/validateRequest');
@@ -123,6 +124,21 @@ workshopRoute.delete(
   '/:id/schedules/:scheduleId',
   authenticateUser,
   deleteSchedule
+);
+
+/**
+ * @route   GET /api/v1/workshops/:workshopId/schedules/:scheduleId/agora-token
+ * @desc    Generate a short-lived Agora RTC token for a live session.
+ *          Role (host/audience) is determined by the caller's enrollment:
+ *            - Workshop creator / Expert / Instructor → host (PUBLISHER)
+ *            - Student in live_broadcast              → audience (SUBSCRIBER)
+ *            - Student in interactive_class           → host (PUBLISHER, full-duplex)
+ * @access  User — must be enrolled or be the workshop creator
+ */
+workshopRoute.get(
+  '/:workshopId/schedules/:scheduleId/agora-token',
+  authenticateUser,
+  getAgoraToken
 );
 
 module.exports = workshopRoute;

@@ -34,6 +34,9 @@ const scheduleSchema = z.object({
   mode: z.enum(['online', 'hybrid'], {
     errorMap: () => ({ message: 'Session mode must be "online" or "hybrid"' })
   }),
+  streamMode: z.enum(['live_broadcast', 'interactive_class'], {
+    errorMap: () => ({ message: 'Stream mode must be "live_broadcast" or "interactive_class"' })
+  }).nullable().optional(),
   location: z.string().trim().nullable().optional(),
   timezone: z
     .string()
