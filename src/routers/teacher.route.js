@@ -28,20 +28,61 @@ const {
  * @desc    Create a new course
  * @access  Teacher (verified)
  */
-teacherRoute.post("/courses", authenticateTeacher, createCourse);
-// teacherRoute.post("/courses",  createCourse);
-
 /**
- * @route   GET /api/teacher/courses
- * @desc    Get all courses by logged-in teacher
- * @access  Teacher (verified)
+ * @swagger
+ * /api/teacher/courses:
+ *   post:
+ *     summary: Create a new course
+ *     tags: [Teacher]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       201: { description: Course created }
+ *   get:
+ *     summary: Get all courses for the logged-in teacher
+ *     tags: [Teacher]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: List of courses }
  */
+teacherRoute.post("/courses", authenticateTeacher, createCourse);
 teacherRoute.get("/courses", authenticateTeacher, getTeacherCourses);
 
 /**
- * @route   GET /api/teacher/courses/:id
- * @desc    Get single course details (full access for owner)
- * @access  Teacher (verified) - owner only
+ * @swagger
+ * /api/teacher/courses/{id}:
+ *   get:
+ *     summary: Get course details
+ *     tags: [Teacher]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: Course details }
+ *   put:
+ *     summary: Update course details
+ *     tags: [Teacher]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: Course updated }
+ *   delete:
+ *     summary: Delete a course
+ *     tags: [Teacher]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: Course deleted }
  */
 teacherRoute.get(
   "/courses/:id",
@@ -49,12 +90,6 @@ teacherRoute.get(
   verifyCourseOwnership,
   getCourseForTeacher,
 );
-
-/**
- * @route   PUT /api/teacher/courses/:id
- * @desc    Update course details
- * @access  Teacher (verified) - owner only, Draft/Rejected status only
- */
 teacherRoute.put(
   "/courses/:id",
   authenticateTeacher,
@@ -64,9 +99,19 @@ teacherRoute.put(
 );
 
 /**
- * @route   PUT /api/teacher/courses/:id/syllabus
- * @desc    Update course syllabus (modules and lessons)
- * @access  Teacher (verified) - owner only, Draft/Rejected status only
+ * @swagger
+ * /api/teacher/courses/{id}/syllabus:
+ *   put:
+ *     summary: Update course syllabus
+ *     tags: [Teacher]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: Syllabus updated }
  */
 teacherRoute.put(
   "/courses/:id/syllabus",
@@ -76,11 +121,6 @@ teacherRoute.put(
   updateSyllabus,
 );
 
-/**
- * @route   DELETE /api/teacher/courses/:id
- * @desc    Delete a course (only Draft/Rejected, no enrollments)
- * @access  Teacher (verified) - owner only
- */
 teacherRoute.delete(
   "/courses/:id",
   authenticateTeacher,
@@ -88,12 +128,20 @@ teacherRoute.delete(
   deleteCourse,
 );
 
-// ==================== COURSE LIFECYCLE ACTIONS ====================
-
 /**
- * @route   POST /api/teacher/courses/:id/submit
- * @desc    Submit course for admin review
- * @access  Teacher (verified) - owner only
+ * @swagger
+ * /api/teacher/courses/{id}/submit:
+ *   post:
+ *     summary: Submit course for review
+ *     tags: [Teacher]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: Course submitted }
  */
 teacherRoute.post(
   "/courses/:id/submit",
@@ -103,9 +151,19 @@ teacherRoute.post(
 );
 
 /**
- * @route   POST /api/teacher/courses/:id/withdraw
- * @desc    Withdraw course from review queue
- * @access  Teacher (verified) - owner only
+ * @swagger
+ * /api/teacher/courses/{id}/withdraw:
+ *   post:
+ *     summary: Withdraw course from review
+ *     tags: [Teacher]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: Course withdrawn }
  */
 teacherRoute.post(
   "/courses/:id/withdraw",
@@ -115,9 +173,19 @@ teacherRoute.post(
 );
 
 /**
- * @route   POST /api/teacher/courses/:id/publish
- * @desc    Publish an approved course
- * @access  Teacher (verified) - owner only
+ * @swagger
+ * /api/teacher/courses/{id}/publish:
+ *   post:
+ *     summary: Publish an approved course
+ *     tags: [Teacher]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: Course published }
  */
 teacherRoute.post(
   "/courses/:id/publish",
@@ -127,9 +195,19 @@ teacherRoute.post(
 );
 
 /**
- * @route   POST /api/teacher/courses/:id/unpublish
- * @desc    Unpublish a published course
- * @access  Teacher (verified) - owner only
+ * @swagger
+ * /api/teacher/courses/{id}/unpublish:
+ *   post:
+ *     summary: Unpublish a course
+ *     tags: [Teacher]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: Course unpublished }
  */
 teacherRoute.post(
   "/courses/:id/unpublish",
@@ -139,9 +217,19 @@ teacherRoute.post(
 );
 
 /**
- * @route   POST /api/teacher/courses/:id/archive
- * @desc    Archive a course (soft delete)
- * @access  Teacher (verified) - owner only
+ * @swagger
+ * /api/teacher/courses/{id}/archive:
+ *   post:
+ *     summary: Archive a course
+ *     tags: [Teacher]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: Course archived }
  */
 teacherRoute.post(
   "/courses/:id/archive",
@@ -151,9 +239,19 @@ teacherRoute.post(
 );
 
 /**
- * @route   POST /api/teacher/courses/:id/restore
- * @desc    Restore an archived course
- * @access  Teacher (verified) - owner only
+ * @swagger
+ * /api/teacher/courses/{id}/restore:
+ *   post:
+ *     summary: Restore an archived course
+ *     tags: [Teacher]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: Course restored }
  */
 teacherRoute.post(
   "/courses/:id/restore",
@@ -163,9 +261,19 @@ teacherRoute.post(
 );
 
 /**
- * @route   POST /api/teacher/courses/:id/clone
- * @desc    Clone/duplicate a course
- * @access  Teacher (verified) - owner only
+ * @swagger
+ * /api/teacher/courses/{id}/clone:
+ *   post:
+ *     summary: Clone a course
+ *     tags: [Teacher]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: Course cloned }
  */
 teacherRoute.post(
   "/courses/:id/clone",

@@ -16,14 +16,105 @@ const {
 } = require('../controllers/courseController');
 
 // ==================== ADMIN AUTH ====================
+/**
+ * @swagger
+ * /admin/register:
+ *   post:
+ *     summary: Register a new admin
+ *     tags: [Admin]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name, email, password, number]
+ *             properties:
+ *               name: { type: string }
+ *               email: { type: string }
+ *               password: { type: string }
+ *               number: { type: string }
+ *     responses:
+ *       201: { description: Admin registered successfully }
+ */
 adminRoute.post("/register", validateRequest(adminRegisterSchema), register);
+
+/**
+ * @swagger
+ * /admin/login:
+ *   post:
+ *     summary: Admin login
+ *     tags: [Admin]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, password]
+ *             properties:
+ *               email: { type: string }
+ *               password: { type: string }
+ *     responses:
+ *       200: { description: Login successful }
+ */
 adminRoute.post("/login", login);
+
+/**
+ * @swagger
+ * /admin/profile:
+ *   get:
+ *     summary: Get admin profile
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: Admin profile details }
+ */
 adminRoute.get("/profile", authenticateAdmin, profile);
+
+/**
+ * @swagger
+ * /admin/update:
+ *   put:
+ *     summary: Update admin profile
+ *     tags: [Admin]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200: { description: Profile updated }
+ */
 adminRoute.put("/update", authenticateAdmin, update);
 
-// Forget password
+/**
+ * @swagger
+ * /admin/forgetPassword:
+ *   post:
+ *     summary: Request password reset for admin
+ *     tags: [Admin]
+ *     responses:
+ *       200: { description: Reset OTP sent }
+ */
 adminRoute.post("/forgetPassword", forgetPassword);
+
+/**
+ * @swagger
+ * /admin/verifyOTP:
+ *   post:
+ *     summary: Verify reset OTP for admin
+ *     tags: [Admin]
+ *     responses:
+ *       200: { description: OTP verified }
+ */
 adminRoute.post("/verifyOTP", verifyOTP);
+
+/**
+ * @swagger
+ * /admin/resetPassword:
+ *   post:
+ *     summary: Reset admin password
+ *     tags: [Admin]
+ *     responses:
+ *       200: { description: Password reset successful }
+ */
 adminRoute.post("/resetPassword", resetPassword);
 
 // ==================== COURSE MANAGEMENT ====================

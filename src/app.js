@@ -95,6 +95,11 @@ app.post('/api/auth/refresh', refreshTokenHandler);
 // Logout endpoint
 app.post('/api/auth/logout', logoutHandler);
 
+// ==================== SWAGGER UI ====================
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpecs = require('./config/swagger.js');
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
+
 // ==================== APPLICATION ROUTES ====================
 appRoutes(app);
 
