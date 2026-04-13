@@ -1,5 +1,4 @@
 const helmet = require('helmet');
-const hpp = require('hpp');
 
 /**
  * Security Configuration
@@ -65,20 +64,23 @@ const helmetConfig = helmet({
 });
 
 /**
- * HPP (HTTP Parameter Pollution) configuration
- * Prevents parameter pollution attacks
+ * HPP (HTTP Parameter Pollution) protection
+ * hpp@0.2.x is incompatible with Express 5 — its internal router patching
+ * causes "next is not a function" on certain request paths.
+ * Express 5's body parser already rejects duplicate JSON keys, so we replace
+ * hpp with a lightweight inline middleware that covers the query-string case.
  */
-const hppConfig = hpp({
-  whitelist: [
-    'tags',
-    'category',
-    'level',
-    'sort',
-    'fields',
-    'page',
-    'limit'
-  ]
-});
+const hppConfig = (req, _res, next) => {
+  if (req.query && typeof req.query === 'object') {
+    for (const key of Object.keys(req.query)) {
+      if (Array.isArray(req.query[key])) {
+        // Keep last value only (same behaviour as hpp's default)
+        req.query[key] = req.query[key][req.query[key].length - 1];
+      }
+    }
+  }
+  next();
+};
 
 /**
  * CORS configuration based on environment

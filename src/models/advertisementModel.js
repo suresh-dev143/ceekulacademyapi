@@ -30,10 +30,14 @@ const advertisementSchema = new mongoose.Schema({
     trim: true
   },
   duration: {
-    type: Number, // Duration in seconds
+    type: Number, // Duration in seconds — MUST be a multiple of 10
     required: [true, 'Ad duration is required'],
-    min: [1, 'Ad duration must be at least 1 second'],
-    max: [600, 'Ad duration cannot exceed 600 seconds']
+    min: [10, 'Ad duration must be at least 10 seconds'],
+    max: [600, 'Ad duration cannot exceed 600 seconds'],
+    validate: {
+      validator: v => v % 10 === 0,
+      message: 'Ad duration must be a multiple of 10 seconds'
+    }
   },
 
   // ==================== TARGETING ====================
@@ -56,6 +60,64 @@ const advertisementSchema = new mongoose.Schema({
     type: Number,
     min: 0,
     max: 100
+  },
+
+  // ==================== MULTI-CRITERIA MATCHING ====================
+  // mandatoryCriteria — ALL fields present here must match (hard filter).
+  // An ad is excluded entirely if any mandatory field mismatches.
+  mandatoryCriteria: {
+    categories: [{
+      type: String,
+      trim: true,
+      lowercase: true
+    }],
+    ageGroup: {
+      type: String,
+      enum: ['children', 'teen', 'adult', 'all'],
+      default: 'all'
+    },
+    contentTypes: [{
+      // e.g. 'theory', 'practice', 'project', 'workshop'
+      type: String,
+      trim: true,
+      lowercase: true
+    }],
+    themes: [{
+      type: String,
+      trim: true,
+      lowercase: true
+    }]
+  },
+
+  // optionalCriteria — present only when advertiser explicitly defines them.
+  // Each defined field contributes a weighted score; absent fields are skipped.
+  optionalCriteria: {
+    // Target learner engagement band (0–100). Ads score higher when the
+    // learner's current engagement is close to this value.
+    engagementScoreTarget: {
+      type: Number,
+      min: 0,
+      max: 100
+    },
+    // Behavioural signals the learner should exhibit for a strong match.
+    // e.g. ['video-paused', 'note-taken', 'quiz-attempted']
+    behavioralSignals: [{
+      type: String,
+      trim: true,
+      lowercase: true
+    }],
+    // Interest tags the learner profile should contain.
+    interestTags: [{
+      type: String,
+      trim: true,
+      lowercase: true
+    }],
+    // ISO 639-1 language code. Binary match (exact or no score).
+    preferredLanguage: {
+      type: String,
+      trim: true,
+      lowercase: true
+    }
   },
 
   // ==================== PRICING & BUDGET ====================
@@ -145,7 +207,7 @@ advertisementSchema.index({ remainingBudget: 1 });
 advertisementSchema.index({ advertiserId: 1, createdAt: -1 });
 
 // ==================== PRE-SAVE ====================
-advertisementSchema.pre('save', function (next) {
+advertisementSchema.pre('save', async function () {
   if (this.isNew) {
     this.remainingBudget = this.totalBudget;
   }
@@ -158,7 +220,6 @@ advertisementSchema.pre('save', function (next) {
     this.status = 'expired';
     this.isActive = false;
   }
-  next();
 });
 
 // ==================== STATICS ====================

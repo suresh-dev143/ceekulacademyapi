@@ -1,6 +1,6 @@
 'use strict';
 
-const { matchAdsForStudent } = require('../services/adMatchingService');
+const { matchAdsForStudent, matchAdsForPage } = require('../services/adMatchingService');
 const { recordAdSecond, completeAdImpression } = require('../services/accountingService');
 const { analyzeImpression } = require('../services/fraudDetectionService');
 const { calculateEffectiveRate, getConfig, updateConfig } = require('../services/pricingService');
@@ -13,19 +13,22 @@ const Preferences = require('../models/preferencesModel');
  */
 async function getMatchedAds(req, res, next) {
   try {
-    const studentId = req.user._id;
-    const { lectureId } = req.query;
+    const studentId           = req.user._id;
+    const { lectureId, pageId } = req.query;
 
+    // Page-based matching (new system) takes priority when pageId is provided
+    if (pageId) {
+      const result = await matchAdsForPage(pageId, studentId.toString());
+      return res.json({ status: true, data: result });
+    }
+
+    // Legacy: match by lectureId (existing behaviour)
     if (!lectureId) {
-      return res.status(400).json({ status: false, message: 'lectureId is required' });
+      return res.status(400).json({ status: false, message: 'lectureId or pageId is required' });
     }
 
     const result = await matchAdsForStudent(studentId, lectureId);
-
-    res.json({
-      status: true,
-      data: result
-    });
+    res.json({ status: true, data: result });
   } catch (err) {
     next(err);
   }

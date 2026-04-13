@@ -16,6 +16,24 @@ const lectureRoute = require('./lecture.route.js');
 const walletRoute = require('./wallet.route.js');
 const adRoute = require('./ad.route.js');
 const settlementRoute = require('./settlement.route.js');
+const pageRoute = require('./page.route.js');
+
+// ==================== SCHEDULER + LIVE EDIT + CHAT ROUTES ====================
+const schedulerRoute  = require('./scheduler.route.js');
+const liveEditRoute   = require('./liveEdit.route.js');
+const chatRoute       = require('./chat.route.js');
+
+// ==================== AI / ADAPTIVE CONTENT ROUTES ====================
+const claudeRoute      = require('./claude.route.js');
+const digitalTwinRoute = require('./digitalTwin.route.js');
+const innovationRoute  = require('./innovation.route.js');
+const contentRoute     = require('./content.route.js');
+
+// ==================== ADAPTIVE ENGINE ROUTES ====================
+const adaptiveStateRoute    = require('./adaptiveState.route.js');
+const contentAtomRoute      = require('./contentAtom.route.js');
+const adaptiveEngineRoute   = require('./adaptiveEngine.route.js');
+const researchPipelineRoute = require('./researchPipeline.route.js');
 
 const appRoutes = (app) => {
   app.get('/api/ping', (_, res) =>
@@ -62,6 +80,43 @@ const appRoutes = (app) => {
 
   // Monthly settlements + Razorpay webhooks
   app.use('/api/settlements', settlementRoute);
+
+  // Pages — ad-control units linking sessions to criteria + control modes
+  app.use('/api/pages', pageRoute);
+
+  // ==================== SCHEDULER ====================
+  app.use('/api/scheduler', schedulerRoute);
+
+  // ==================== LIVE EDITOR ====================
+  // REST bootstrap for the collaborative editing session
+  app.use('/api/live-edit', liveEditRoute);
+
+  // ==================== LIVE CHAT ====================
+  // REST: history, summary, stats (real-time via /chat Socket.io namespace)
+  app.use('/api/chat', chatRoute);
+
+  // ==================== AI / ADAPTIVE CONTENT ====================
+  // Claude agents: co-teacher chat, contextual ad copy
+  app.use('/api/claude', claudeRoute);
+
+  // Digital twin: learner skill graph, cognitive profile, AI summary
+  app.use('/api/digital-twin', digitalTwinRoute);
+
+  // Innovation pipeline: idea → deployed, Claude coaching
+  app.use('/api/innovations', innovationRoute);
+
+  // Living content: version control, research integration, depth layers
+  app.use('/api/content', contentRoute);
+
+  // ==================== ADAPTIVE ENGINE ====================
+  // Real-time cognitive state tracking + signals
+  app.use('/api/adaptive/state',    adaptiveStateRoute);
+  // Content atom CRUD + engagement metrics
+  app.use('/api/adaptive/atoms',    contentAtomRoute);
+  // Mode decisions + next-atom recommendations
+  app.use('/api/adaptive/engine',   adaptiveEngineRoute);
+  // Research ingestion + AI enrichment pipeline
+  app.use('/api/adaptive/research', researchPipelineRoute);
 
   // Error handling
   app.use(unspecifiedRoutesHandler);

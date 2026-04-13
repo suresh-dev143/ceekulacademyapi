@@ -27,6 +27,7 @@
   },
   "homepage": "",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.85.0",
     "agora-access-token": "^2.0.4",
     "axios": "^1.13.4",
     "bcrypt": "^6.0.0",
@@ -51,6 +52,7 @@
     "redis": "^5.11.0",
     "sharp": "^0.34.1",
     "slugify": "^1.6.6",
+    "socket.io": "^4.8.3",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "uuid": "^13.0.0",

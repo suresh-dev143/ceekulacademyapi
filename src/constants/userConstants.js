@@ -46,6 +46,7 @@ const ACTIVITY_TYPES = Object.freeze([
   "Election",
   "Any Other",
   "Partnership",
+  "Engagement",
 ]);
 
 const MODE_OPTIONS = Object.freeze([
