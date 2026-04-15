@@ -12,6 +12,8 @@ const isValidTimezone = (tz) => {
   }
 };
 
+const objectIdRegex = /^[0-9a-fA-F]{24}$/;
+
 const scheduleSchema = z.object({
   date: z
     .string()
@@ -38,6 +40,10 @@ const scheduleSchema = z.object({
     errorMap: () => ({ message: 'Stream mode must be "live_broadcast" or "interactive_class"' })
   }).nullable().optional(),
   location: z.string().trim().nullable().optional(),
+  instructorId: z
+    .string()
+    .regex(objectIdRegex, 'Invalid instructor ID format')
+    .optional(),
   timezone: z
     .string()
     .trim()
@@ -110,6 +116,22 @@ const updateWorkshopSchema = z.object({
     .optional(),
   status: z.enum(['draft', 'published', 'cancelled'], {
     errorMap: () => ({ message: 'Status must be "draft", "published", or "cancelled"' })
+  }).optional(),
+  address: z.object({
+    addressLine1: z.string().trim().optional(),
+    addressLine2: z.string().trim().optional(),
+    landmark: z.string().trim().optional(),
+    city: z.string().trim().optional(),
+    district: z.string().trim().optional(),
+    state: z.string().trim().optional(),
+    country: z.string().trim().optional(),
+    pincode: z.string().trim().regex(/^[0-9]{6}$/, 'Invalid pincode').optional()
+  }).optional(),
+  location: z.object({
+    type: z.literal('Point').optional(),
+    coordinates: z.tuple([z.number(), z.number()], {
+      errorMap: () => ({ message: 'Coordinates must be [longitude, latitude]' })
+    })
   }).optional()
 });
 

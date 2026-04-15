@@ -1,5 +1,6 @@
 const authenticateUser = require('./authenticateUser.js');
 const authenticateAdmin = require('./authenticateAdmin.js');
+const authenticateAny = require('./authenticateAny.js');
 const fileUploader = require('./fileUploader.js');
 const {
     authenticateTeacher,
@@ -13,6 +14,7 @@ const authorizePartner = require('./authorizePartner');
 module.exports = {
     authenticateUser,
     authenticateAdmin,
+    authenticateAny,
     authenticateTeacher,
     verifyCourseOwnership,
     verifyCourseEditable,

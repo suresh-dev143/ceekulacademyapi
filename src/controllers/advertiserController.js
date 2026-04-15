@@ -1,11 +1,54 @@
 'use strict';
 
+const path = require('path');
 const Advertisement = require('../models/advertisementModel');
 const Wallet = require('../models/walletModel');
 const AdImpression = require('../models/adImpressionModel');
 const { lockBudget } = require('../services/walletService');
 const { invalidateAdCache } = require('../services/adMatchingService');
 const { getAdFraudReport } = require('../services/fraudDetectionService');
+const fileUploader = require('../middlewares/fileUploader');
+
+/**
+ * POST /api/advertiser/ads/upload-media
+ * Upload image or video file to local storage, returns accessible URL
+ */
+const uploadAdMediaMiddleware = fileUploader(
+  [{ name: 'media', maxCount: 1 }],
+  'ads'
+);
+
+async function uploadAdMedia(req, res, next) {
+  uploadAdMediaMiddleware(req, res, async (err) => {
+    if (err) return next(err);
+
+    const file = req.files?.media?.[0];
+    if (!file) {
+      return res.status(400).json({ status: false, message: 'No media file provided' });
+    }
+
+    const isVideo = file.mimetype.startsWith('video/');
+    const isImage = file.mimetype.startsWith('image/');
+
+    if (!isVideo && !isImage) {
+      return res.status(400).json({ status: false, message: 'File must be an image or video' });
+    }
+
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const relativePath = file.path.replace(/\\/g, '/').replace(/^public\//, '');
+    const mediaUrl = `${baseUrl}/public/${relativePath}`;
+
+    res.json({
+      status: true,
+      data: {
+        mediaUrl,
+        adType: isVideo ? 'video' : 'image',
+        filename: file.filename,
+        size: file.size
+      }
+    });
+  });
+}
 
 /**
  * POST /api/advertiser/ads
@@ -15,8 +58,8 @@ async function createAd(req, res, next) {
   try {
     const advertiserId = req.user._id;
     const {
-      title, description, videoUrl, thumbnailUrl, duration,
-      category, targetAudience, targetAgeMin, targetAgeMax,
+      title, description, mediaUrl, thumbnailUrl, adType, clickThroughUrl,
+      duration, category, targetAudience, targetAgeMin, targetAgeMax,
       ratePerSecondPerStudent, totalBudget, expiryDate, startDate
     } = req.body;
 
@@ -25,11 +68,16 @@ async function createAd(req, res, next) {
       return res.status(400).json({ status: false, message: 'Expiry date must be in the future' });
     }
 
+    if (!['image', 'video'].includes(adType)) {
+      return res.status(400).json({ status: false, message: 'adType must be image or video' });
+    }
+
     // Budget is locked at approval time, not at creation
     const ad = await Advertisement.create({
       advertiserId,
-      title, description, videoUrl, thumbnailUrl, duration,
-      category, targetAudience, targetAgeMin, targetAgeMax,
+      title, description, mediaUrl, thumbnailUrl, adType,
+      clickThroughUrl: clickThroughUrl || undefined,
+      duration, category, targetAudience, targetAgeMin, targetAgeMax,
       ratePerSecondPerStudent, totalBudget,
       expiryDate: new Date(expiryDate),
       startDate: startDate ? new Date(startDate) : new Date(),
@@ -273,6 +321,7 @@ async function verifyRazorpayPayment(paymentId, amount) {
 }
 
 module.exports = {
+  uploadAdMedia,
   createAd,
   getMyAds,
   getAdAnalytics,

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const {
+  uploadAdMedia,
   createAd,
   getMyAds,
   getAdAnalytics,
@@ -17,6 +18,7 @@ router.use(authenticateUser);
 router.get('/dashboard', getDashboard);
 
 // Ad management
+router.post('/ads/upload-media', uploadAdMedia);
 router.post('/ads', createAd);
 router.get('/ads', getMyAds);
 router.get('/ads/:adId/analytics', getAdAnalytics);

@@ -20,20 +20,36 @@ const advertisementSchema = new mongoose.Schema({
     type: String,
     maxlength: [1000, 'Description cannot exceed 1000 characters']
   },
-  videoUrl: {
+  adType: {
     type: String,
-    required: [true, 'Ad video URL is required'],
+    enum: ['image', 'video'],
+    required: [true, 'Ad type (image or video) is required']
+  },
+  mediaUrl: {
+    type: String,
+    required: [true, 'Ad media URL is required'],
     trim: true
   },
   thumbnailUrl: {
     type: String,
     trim: true
   },
+  clickThroughUrl: {
+    type: String,
+    trim: true,
+    validate: {
+      validator: v => {
+        if (!v) return true;
+        try { return ['http:', 'https:'].includes(new URL(v).protocol); } catch { return false; }
+      },
+      message: 'Click-through URL must be a valid http or https URL'
+    }
+  },
   duration: {
     type: Number, // Duration in seconds — MUST be a multiple of 10
     required: [true, 'Ad duration is required'],
     min: [10, 'Ad duration must be at least 10 seconds'],
-    max: [600, 'Ad duration cannot exceed 600 seconds'],
+    max: [60, 'Ad duration cannot exceed 60 seconds'],
     validate: {
       validator: v => v % 10 === 0,
       message: 'Ad duration must be a multiple of 10 seconds'

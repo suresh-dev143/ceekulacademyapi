@@ -21,13 +21,10 @@ const updateWorkshop = async (req, res) => {
       return res.status(404).json({ status: false, message: 'Workshop not found' });
     }
 
-    const { Enrollment } = require('../../models/authModels');
-    const enrollment = await Enrollment.findOne({ workshopId: id, userId: req.user._id });
-
-    if (!enrollment || !['Expert', 'Instructor'].includes(enrollment.role)) {
+    if (workshop.createdBy.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         status: false,
-        message: 'Access denied. You must be enrolled as an Instructor or Expert to update it.'
+        message: 'Access denied. Only the workshop owner can update it.'
       });
     }
 
@@ -71,16 +68,18 @@ const updateWorkshop = async (req, res) => {
           activity: plan ? plan.title : '',
           description: plan ? plan.description : '',
           date: new Date(s.date),
-          location: s.location || null
+          location: s.location || null,
+          instructorId: s.instructorId || workshop.createdBy
         };
       });
     } else if (updates.schedules && updates.schedules.length === 0) {
         updates.schedules = [];
     }
 
-    // Ensure instructorId is set for all schedules if publishing
+    // Ensure instructorId is set on all schedules when publishing
     if (updates.status === 'published' || workshop.status === 'published') {
-      workshop.schedules.forEach(s => {
+      const schedulesToCheck = updates.schedules || workshop.schedules;
+      schedulesToCheck.forEach(s => {
         if (!s.instructorId) s.instructorId = workshop.createdBy;
       });
     }
