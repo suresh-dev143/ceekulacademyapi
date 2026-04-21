@@ -65,9 +65,9 @@ const EXPERT_TYPES = Object.freeze([
   "Any Other",
 ]);
 
-const GENDERS = Object.freeze(["Male", "Female", "Other", "PreferNotToSay"]);
+const GENDERS = Object.freeze(["Male", "Female", "Transgender", "Other", "PreferNotToSay"]);
 
-const AUTH_PROVIDERS = Object.freeze(["MOBILE_OTP", "EMAIL_PASSWORD", "BOTH"]);
+const AUTH_PROVIDERS = Object.freeze(["MOBILE_OTP", "EMAIL_PASSWORD", "MOBILE_PASSWORD", "BOTH"]);
 
 const USER_STATUSES = Object.freeze(["Active", "Inactive", "Suspended"]);
 

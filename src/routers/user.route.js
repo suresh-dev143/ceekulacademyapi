@@ -1,5 +1,5 @@
 const userRoute = require("express").Router();
-const { updateUserProfile, updateProfile, sendOTP, verifyOTP, signup, login, getUserById, getAllUsers, changePassword, applyTeacher, sendEmailOTP, verifyEmailOTP } = require("../controllers/userController");
+const { updateUserProfile, updateProfile, sendOTP, verifyOTP, signup, login, getUserById, getAllUsers, changePassword, applyTeacher, sendEmailOTP, verifyEmailOTP, ceebrainRegister } = require("../controllers/userController");
 const { authenticateUser, fileUploader } = require("../middlewares");
 const validateRequest = require("../middlewares/validateRequest");
 const { signupSchema } = require("../validators");
@@ -27,6 +27,35 @@ const { signupSchema } = require("../validators");
  *       201: { description: User created successfully }
  */
 userRoute.post("/signup", signup);
+
+/**
+ * @swagger
+ * /users/ceebrain-register:
+ *   post:
+ *     summary: Register a new user via Ceebrain ID flow (mobile + password)
+ *     tags: [Users]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [mobileNo, password, ceebrainId, agreeToFramework]
+ *             properties:
+ *               mobileNo: { type: string }
+ *               dateOfBirth: { type: string, format: date }
+ *               placeOfBirth: { type: string }
+ *               identity: { type: string, enum: [homo_sapiens, others] }
+ *               gender: { type: string, enum: [male, female, transgender] }
+ *               bplCategory: { type: string, enum: [yes, no] }
+ *               underprivilegedCategory: { type: string, enum: [yes, no] }
+ *               password: { type: string }
+ *               ceebrainId: { type: string }
+ *               agreeToFramework: { type: boolean }
+ *     responses:
+ *       201: { description: User registered successfully }
+ */
+userRoute.post("/ceebrain-register", ceebrainRegister);
 
 /**
  * @swagger

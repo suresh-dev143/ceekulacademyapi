@@ -117,6 +117,14 @@ const userSchema = new mongoose.Schema(
       required: true
     },
 
+    // ==================== CEEBRAIN ID ====================
+    ceebrainId: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+    },
+
     // ==================== CORE IDENTITY ====================
     name: {
       type: String,
@@ -126,12 +134,27 @@ const userSchema = new mongoose.Schema(
     },
     dateOfBirth: {
       type: Date,
-
+    },
+    placeOfBirth: {
+      type: String,
+      trim: true,
+      maxlength: [200, 'Place of birth cannot exceed 200 characters']
+    },
+    identity: {
+      type: String,
+      enum: ['homo_sapiens', 'others'],
     },
     gender: {
       type: String,
       enum: GENDERS,
-
+    },
+    bplCategory: {
+      type: String,
+      enum: ['yes', 'no'],
+    },
+    underprivilegedCategory: {
+      type: String,
+      enum: ['yes', 'no'],
     },
     profileImage: {
       type: String,
@@ -316,7 +339,9 @@ userSchema.pre('validate', function () {
     this.invalidate('password', 'Password is required for email authentication');
   }
 
-// No role-based validation needed for now
+  if (this.authProvider === 'MOBILE_PASSWORD' && !this.password) {
+    this.invalidate('password', 'Password is required for mobile+password authentication');
+  }
 });
 
 // ==================== PASSWORD HASHING ====================

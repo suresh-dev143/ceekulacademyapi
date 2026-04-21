@@ -35,6 +35,10 @@ const contentAtomRoute      = require('./contentAtom.route.js');
 const adaptiveEngineRoute   = require('./adaptiveEngine.route.js');
 const researchPipelineRoute = require('./researchPipeline.route.js');
 
+// ==================== NEURON PARTICIPATION ECOSYSTEM ====================
+const neuronRoute   = require('./neuron.route.js');
+const ceegroupRoute = require('./ceegroup.route.js');
+
 const appRoutes = (app) => {
   app.get('/api/ping', (_, res) =>
     res.status(200).json({ status: true, message: 'Ping Successfully.', timestamp: new Date() })
@@ -117,6 +121,13 @@ const appRoutes = (app) => {
   app.use('/api/adaptive/engine',   adaptiveEngineRoute);
   // Research ingestion + AI enrichment pipeline
   app.use('/api/adaptive/research', researchPipelineRoute);
+
+  // ==================== NEURON PARTICIPATION ECOSYSTEM ====================
+  // Non-monetary participation units: FUN / CUN / SUN / My Neurons
+  // Portal NEVER handles money — all money flows via external entity escrows
+  app.use('/api/neurons',   neuronRoute);
+  // CEEGROUP: collective entities with 15-digit IDs, shared neuron buckets
+  app.use('/api/ceegroups', ceegroupRoute);
 
   // Error handling
   app.use(unspecifiedRoutesHandler);

@@ -10,6 +10,7 @@ const changePassword = require("./auth/updatePassword.js");
 const applyTeacher = require("./auth/applyTeacher.js");
 const sendEmailOTP = require("./auth/sendEmailOTP.js");
 const verifyEmailOTP = require("./auth/verifyEmailOTP.js");
+const ceebrainRegister = require("./auth/ceebrainRegister.js");
 
 module.exports = {
     updateUserProfile,
@@ -24,5 +25,6 @@ module.exports = {
     applyTeacher,
     sendEmailOTP,
     verifyEmailOTP,
+    ceebrainRegister,
 };
 
