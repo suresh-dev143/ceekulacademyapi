@@ -30,10 +30,11 @@
 
 const { Server } = require('socket.io');
 
-let io          = null;
-let editorNS    = null;
-let chatNS      = null;
-let adaptiveNS  = null;
+let io             = null;
+let editorNS       = null;
+let chatNS         = null;
+let adaptiveNS     = null;
+let discussionNS   = null;
 
 // In-memory participant registry: lectureId → Map<socketId, participantInfo>
 const editorRooms = new Map();
@@ -136,8 +137,11 @@ function initSocket(httpServer) {
 
   // ── /adaptive namespace — real-time cognitive state + mode switching ──────
   adaptiveNS = io.of('/adaptive');
-  // Handler logic is in adaptiveService.js (initAdaptiveService())
-  console.log('[Socket] Socket.io initialised (default + /editor + /chat + /adaptive namespaces)');
+
+  // ── /discussion namespace — universal topic-based chat ───────────────────
+  discussionNS = io.of('/discussion');
+
+  console.log('[Socket] Socket.io initialised (default + /editor + /chat + /adaptive + /discussion namespaces)');
   return io;
 }
 
@@ -163,5 +167,9 @@ function getAdaptiveNS() {
   if (!adaptiveNS) throw new Error('[Socket] Adaptive namespace not initialised');
   return adaptiveNS;
 }
+function getDiscussionNS() {
+  if (!discussionNS) throw new Error('[Socket] Discussion namespace not initialised');
+  return discussionNS;
+}
 
-module.exports = { initSocket, getIO, getEditorNS, getChatNS, getAdaptiveNS, editorRooms };
+module.exports = { initSocket, getIO, getEditorNS, getChatNS, getAdaptiveNS, getDiscussionNS, editorRooms };

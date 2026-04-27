@@ -15,6 +15,7 @@ const mongoose = require('mongoose');
 const Settlement = require('../models/settlementModel');
 const Wallet = require('../models/walletModel');
 const AdImpression = require('../models/adImpressionModel');
+const Razorpay = require('razorpay');
 const { settlePendingBalance } = require('./walletService');
 const { publishEvent, EVENT_TYPES } = require('./eventService');
 
@@ -176,10 +177,17 @@ async function processSettlementPayout(settlement) {
  * Razorpay payout integration
  */
 async function triggerRazorpayPayout({ fundAccountId, amount, currency, settlementId, narration }) {
-  const Razorpay = require('razorpay');
+  const keyId = process.env.RAZORPAY_KEY_ID;
+  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+
+  if (!keyId || !keySecret) {
+    console.warn('[Settlement] Razorpay credentials missing. Payout skipped.');
+    throw Object.assign(new Error('Payout gateway not available (Razorpay keys missing)'), { status: 503 });
+  }
+
   const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET
+    key_id: keyId,
+    key_secret: keySecret
   });
 
   const payout = await razorpay.payouts.create({

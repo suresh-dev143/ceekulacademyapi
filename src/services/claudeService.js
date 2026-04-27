@@ -927,6 +927,101 @@ Generate a segment summary overlay.`;
   });
 }
 
+// ── CONTENT VALIDATION ENGINE ─────────────────────────────────────────────────
+
+const VALIDATOR_MODEL = 'claude-opus-4-7';
+
+// Cached system prompt block — reused across all validation calls
+const VALIDATOR_SYSTEM = [
+  {
+    type: 'text',
+    text: `You are an AI content moderation engine for the Ceekul community platform.
+Ceekul is a positive, community-focused learning and civic participation platform.
+
+Evaluate submitted content across three dimensions and return a strict JSON object.
+
+Dimensions:
+1. category_match_score (0-100): How well the content fits the declared category. 100 = perfect match, 0 = completely wrong category.
+2. safety_score (0-100): Appropriateness and safety. 100 = fully safe, 0 = extremely harmful/offensive.
+3. quality_score (0-100): Content quality, coherence, and value. 100 = excellent, 0 = spam/gibberish.
+
+Decision rules (apply in order):
+- REJECTED: safety_score < 40 — content is harmful, abusive, or dangerous
+- REJECTED: quality_score < 20 — pure spam or gibberish
+- NEEDS_REVIEW: any score in [40, 69] — borderline, requires human review
+- APPROVED: all scores >= 70 — publish immediately
+
+Categories on Ceekul: education, health, community, justice, environment, culture, innovation, entrepreneurship, governance.
+
+Hard rejections (always REJECTED):
+- Content promoting violence, self-harm, or harm to others
+- Sexual content of any kind
+- Hate speech targeting any group
+- Spam, scams, or commercial solicitation unrelated to community purpose
+
+Output ONLY valid JSON — no markdown, no text outside the JSON object:
+{
+  "status": "APPROVED",
+  "reason": "one concise sentence explaining the decision",
+  "category_match_score": 85,
+  "safety_score": 95,
+  "quality_score": 78
+}`,
+    cache_control: { type: 'ephemeral' }
+  }
+];
+
+async function runContentValidator({ userId, title, description, category }) {
+  const t0 = Date.now();
+
+  const userMessage = `Category declared: ${category}
+Title: ${title}
+Description: ${description}
+
+Evaluate this content submission.`;
+
+  const task = await AgentTask.create({
+    agentType:  'content_validator',
+    userId,
+    sessionId:  `validate_${Date.now()}`,
+    prompt:     userMessage,
+    context:    { category, title: title.slice(0, 100) },
+    status:     'running'
+  });
+
+  try {
+    const msg = await client.messages.create({
+      model:      VALIDATOR_MODEL,
+      max_tokens: 512,
+      thinking:   { type: 'adaptive' },
+      system:     VALIDATOR_SYSTEM,
+      messages:   [{ role: 'user', content: userMessage }]
+    });
+
+    // Skip thinking blocks — find the text block
+    const textBlock = msg.content.find(b => b.type === 'text');
+    const text = textBlock?.text?.trim() ?? '';
+
+    const latencyMs = Date.now() - t0;
+    const cost = (msg.usage.input_tokens + msg.usage.output_tokens) * COST_PER_TOKEN;
+
+    await AgentTask.findByIdAndUpdate(task._id, {
+      response:    text,
+      tokensIn:    msg.usage.input_tokens,
+      tokensOut:   msg.usage.output_tokens,
+      latencyMs,
+      costNeurons: cost,
+      status:      'done'
+    });
+
+    const clean = text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
+    return JSON.parse(clean);
+  } catch (err) {
+    await AgentTask.findByIdAndUpdate(task._id, { status: 'failed', error: err.message });
+    throw err;
+  }
+}
+
 // ── O2. Personalized Explainer ────────────────────────────────────────────────
 /**
  * Generates a learner-adapted concept explanation at a specific timestamp.
@@ -999,5 +1094,7 @@ module.exports = {
   runAtomQualityWriter,
   // Playback Overlay agents
   runOverlaySummarizer,
-  runPersonalizedExplainer
+  runPersonalizedExplainer,
+  // Content Validation Engine
+  runContentValidator
 };

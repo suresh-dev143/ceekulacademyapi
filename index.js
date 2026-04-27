@@ -8,7 +8,8 @@ const app      = require('./src/app.js');
 const { initSocket }            = require('./src/socket');
 const { initLiveEditService }   = require('./src/services/liveEditService');
 const { initChatService }       = require('./src/services/chatService');
-const { initAdaptiveService }   = require('./src/services/adaptiveSocketService');
+const { initAdaptiveService }    = require('./src/services/adaptiveSocketService');
+const { initDiscussionService }  = require('./src/services/discussionService');
 const PORT     = process.env.PORT || 1003;
 const BASE_URL = `http://localhost:${PORT || 1003}`;
 
@@ -22,7 +23,8 @@ const BASE_URL = `http://localhost:${PORT || 1003}`;
     initSocket(httpServer);
     initLiveEditService();   // attach /editor namespace event handlers
     initChatService();       // attach /chat namespace event handlers
-    initAdaptiveService();   // attach /adaptive namespace event handlers
+    initAdaptiveService();    // attach /adaptive namespace event handlers
+    initDiscussionService();  // attach /discussion namespace event handlers
 
     // post script function should goes here before starting the server
     httpServer.listen(PORT, () => console.log(`Server is running on ${BASE_URL}`));

@@ -145,6 +145,69 @@ class NeuronService {
   }
 
   // ────────────────────────────────────────────────────────────────────────────
+  // AUTO-CONFIRMED PAYMENT CONTRIBUTION (Cramib / Razorpay)
+  // Called by PaymentService after signature verification succeeds.
+  // Skips the admin-review step — the payment gateway is the proof of payment.
+  // ────────────────────────────────────────────────────────────────────────────
+
+  static async autoConfirmPaymentContribution(
+    { userId, amountINR, entityType, entityName, notes, razorpayPaymentId, sessionId },
+    sess
+  ) {
+    const ownSession = !sess;
+    if (ownSession) {
+      sess = await mongoose.startSession();
+      sess.startTransaction();
+    }
+    try {
+      const neuronsToCredit = Math.floor(amountINR); // 1 INR = 1 Neuron
+
+      const [contribution] = await NeuronContribution.create([{
+        userId,
+        entityType,
+        entityName,
+        amountINR,
+        transactionReference: razorpayPaymentId,
+        notes: notes ?? `Auto-confirmed via Cramib (session: ${sessionId})`,
+        status:        'confirmed',
+        neuronsIssued: neuronsToCredit,
+        confirmedAt:   new Date(),
+      }], { session: sess });
+
+      const account = await NeuronService.getOrCreateAccount(userId);
+      account.fun.balance       += neuronsToCredit;
+      account.fun.totalReceived += neuronsToCredit;
+      account.lastActivityAt     = new Date();
+      await account.save({ session: sess });
+
+      const [tx] = await NeuronTransaction.create([{
+        txId:          NeuronTransaction.generateTxId(),
+        userId,
+        txType:        'contribution_conversion',
+        fromBucket:    'external',
+        toBucket:      'fun',
+        amount:        neuronsToCredit,
+        balanceAfter:  account.balanceSnapshot(),
+        referenceId:   contribution._id.toString(),
+        referenceType: 'contribution',
+        description:   `₹${amountINR} via Cramib — ${neuronsToCredit} neurons credited to FUN`,
+        metadata:      { entityType, entityName, razorpayPaymentId, sessionId, source: 'cramib' },
+      }], { session: sess });
+
+      contribution.neuronTransactionId = tx.txId;
+      await contribution.save({ session: sess });
+
+      if (ownSession) await sess.commitTransaction();
+      return { neuronsIssued: neuronsToCredit, account, contribution };
+    } catch (err) {
+      if (ownSession) await sess.abortTransaction();
+      throw err;
+    } finally {
+      if (ownSession) sess.endSession();
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
   // BUCKET TRANSFERS
   // Strictly enforced transfer rules — see ALLOWED_TRANSFERS map above.
   // CUN and SUN can NEVER transfer back to FUN.

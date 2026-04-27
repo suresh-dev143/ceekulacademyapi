@@ -35,9 +35,22 @@ const contentAtomRoute      = require('./contentAtom.route.js');
 const adaptiveEngineRoute   = require('./adaptiveEngine.route.js');
 const researchPipelineRoute = require('./researchPipeline.route.js');
 
+// ==================== CONTENT VALIDATION ====================
+const contentValidationRoute = require('./contentValidation.route.js');
+
+// ==================== SUCCESS STORIES ====================
+const successStoryRoute = require('./successStory.route.js');
+
+// ==================== MY ACTIVITIES ====================
+const myActivitiesRoute = require('./myActivities.route.js');
+
+// ==================== UNIVERSAL DISCUSSION CHAT ====================
+const discussionRoute = require('./discussion.route.js');
+
 // ==================== NEURON PARTICIPATION ECOSYSTEM ====================
 const neuronRoute   = require('./neuron.route.js');
 const ceegroupRoute = require('./ceegroup.route.js');
+const paymentRoute  = require('./payment.route.js');
 
 const appRoutes = (app) => {
   app.get('/api/ping', (_, res) =>
@@ -122,12 +135,26 @@ const appRoutes = (app) => {
   // Research ingestion + AI enrichment pipeline
   app.use('/api/adaptive/research', researchPipelineRoute);
 
+  // ==================== CONTENT VALIDATION ====================
+  app.use('/api/validate', contentValidationRoute);
+
+  // ==================== SUCCESS STORIES ====================
+  app.use('/api/stories', successStoryRoute);
+
+  // ==================== MY ACTIVITIES ====================
+  app.use('/api/my-activities', myActivitiesRoute);
+
+  // ==================== UNIVERSAL DISCUSSION CHAT ====================
+  app.use('/api/discussion', discussionRoute);
+
   // ==================== NEURON PARTICIPATION ECOSYSTEM ====================
   // Non-monetary participation units: FUN / CUN / SUN / My Neurons
   // Portal NEVER handles money — all money flows via external entity escrows
   app.use('/api/neurons',   neuronRoute);
   // CEEGROUP: collective entities with 15-digit IDs, shared neuron buckets
   app.use('/api/ceegroups', ceegroupRoute);
+  // Payment: Cramib-initiated sessions + Razorpay verification + neuron credit
+  app.use('/api/payment',   paymentRoute);
 
   // Error handling
   app.use(unspecifiedRoutesHandler);

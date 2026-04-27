@@ -176,10 +176,17 @@ async function linkBankAccount(req, res, next) {
 }
 
 async function createRazorpayContact({ userId, name, email, phone, accountNumber, ifscCode, accountHolderName, upiId }) {
+  const keyId = process.env.RAZORPAY_KEY_ID;
+  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+
+  if (!keyId || !keySecret) {
+    throw Object.assign(new Error('Razorpay integration not available (keys missing)'), { status: 503 });
+  }
+
   const Razorpay = require('razorpay');
   const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET
+    key_id: keyId,
+    key_secret: keySecret
   });
 
   const contact = await razorpay.contacts.create({
