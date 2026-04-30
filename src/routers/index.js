@@ -19,20 +19,20 @@ const settlementRoute = require('./settlement.route.js');
 const pageRoute = require('./page.route.js');
 
 // ==================== SCHEDULER + LIVE EDIT + CHAT ROUTES ====================
-const schedulerRoute  = require('./scheduler.route.js');
-const liveEditRoute   = require('./liveEdit.route.js');
-const chatRoute       = require('./chat.route.js');
+const schedulerRoute = require('./scheduler.route.js');
+const liveEditRoute = require('./liveEdit.route.js');
+const chatRoute = require('./chat.route.js');
 
 // ==================== AI / ADAPTIVE CONTENT ROUTES ====================
-const claudeRoute      = require('./claude.route.js');
+const claudeRoute = require('./claude.route.js');
 const digitalTwinRoute = require('./digitalTwin.route.js');
-const innovationRoute  = require('./innovation.route.js');
-const contentRoute     = require('./content.route.js');
+const innovationRoute = require('./innovation.route.js');
+const contentRoute = require('./content.route.js');
 
 // ==================== ADAPTIVE ENGINE ROUTES ====================
-const adaptiveStateRoute    = require('./adaptiveState.route.js');
-const contentAtomRoute      = require('./contentAtom.route.js');
-const adaptiveEngineRoute   = require('./adaptiveEngine.route.js');
+const adaptiveStateRoute = require('./adaptiveState.route.js');
+const contentAtomRoute = require('./contentAtom.route.js');
+const adaptiveEngineRoute = require('./adaptiveEngine.route.js');
 const researchPipelineRoute = require('./researchPipeline.route.js');
 
 // ==================== CONTENT VALIDATION ====================
@@ -47,10 +47,17 @@ const myActivitiesRoute = require('./myActivities.route.js');
 // ==================== UNIVERSAL DISCUSSION CHAT ====================
 const discussionRoute = require('./discussion.route.js');
 
+// ==================== SUPPLY / OFFER ====================
+const supplyRoute = require('./supply.route.js');
+
+// ==================== CREATE CONTENT (MEMBER CREATOR) ====================
+const creatorRoute = require('./creator.route.js');
+
 // ==================== NEURON PARTICIPATION ECOSYSTEM ====================
-const neuronRoute   = require('./neuron.route.js');
+const neuronRoute = require('./neuron.route.js');
 const ceegroupRoute = require('./ceegroup.route.js');
-const paymentRoute  = require('./payment.route.js');
+const paymentRoute = require('./payment.route.js');
+const atomicRoute = require('./atomic.route.js');
 
 const appRoutes = (app) => {
   app.get('/api/ping', (_, res) =>
@@ -127,11 +134,11 @@ const appRoutes = (app) => {
 
   // ==================== ADAPTIVE ENGINE ====================
   // Real-time cognitive state tracking + signals
-  app.use('/api/adaptive/state',    adaptiveStateRoute);
+  app.use('/api/adaptive/state', adaptiveStateRoute);
   // Content atom CRUD + engagement metrics
-  app.use('/api/adaptive/atoms',    contentAtomRoute);
+  app.use('/api/adaptive/atoms', contentAtomRoute);
   // Mode decisions + next-atom recommendations
-  app.use('/api/adaptive/engine',   adaptiveEngineRoute);
+  app.use('/api/adaptive/engine', adaptiveEngineRoute);
   // Research ingestion + AI enrichment pipeline
   app.use('/api/adaptive/research', researchPipelineRoute);
 
@@ -147,14 +154,25 @@ const appRoutes = (app) => {
   // ==================== UNIVERSAL DISCUSSION CHAT ====================
   app.use('/api/discussion', discussionRoute);
 
+  // ==================== SUPPLY / OFFER ====================
+  app.use('/api/supply', supplyRoute);
+
+  // ==================== CREATE CONTENT (MEMBER CREATOR) ====================
+  // Draft → Share → Publish lifecycle with Hybrid ID system
+  app.use('/api/creator', creatorRoute);
+
   // ==================== NEURON PARTICIPATION ECOSYSTEM ====================
   // Non-monetary participation units: FUN / CUN / SUN / My Neurons
   // Portal NEVER handles money — all money flows via external entity escrows
-  app.use('/api/neurons',   neuronRoute);
+  app.use('/api/neurons', neuronRoute);
   // CEEGROUP: collective entities with 15-digit IDs, shared neuron buckets
   app.use('/api/ceegroups', ceegroupRoute);
   // Payment: Cramib-initiated sessions + Razorpay verification + neuron credit
-  app.use('/api/payment',   paymentRoute);
+  app.use('/api/payment', paymentRoute);
+  
+  // ==================== ATOMIC CONTENT SYSTEM ====================
+  // Save Engine + Evolution Engine + Atomic ID
+  app.use('/api/atomic', atomicRoute);
 
   // Error handling
   app.use(unspecifiedRoutesHandler);

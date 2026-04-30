@@ -147,7 +147,16 @@ const workshopSchema = new mongoose.Schema({
     type: Number,
     default: 0,
     min: 0
-  }
+  },
+  
+  // ==================== GLOBAL DISPATCHER ====================
+  // Linked Atomic Content references (Atomic Identity Engine)
+  linkedAtomicContent: [{
+    contentId: { type: String, required: true },
+    role: { type: String, required: true },
+    metadata: mongoose.Schema.Types.Mixed,
+    addedAt: { type: Date, default: Date.now }
+  }]
 }, {
   timestamps: true,
   collection: 'workshops'

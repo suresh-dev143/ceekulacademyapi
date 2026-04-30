@@ -203,7 +203,7 @@ const courseSchema = new mongoose.Schema({
     type: Number,
     min: [0, 'Price cannot be negative'],
     validate: {
-      validator: function(value) {
+      validator: function (value) {
         // Price is required only if pricingType is 'Paid'
         if (this.pricingType === 'Paid') {
           return value !== undefined && value > 0;
@@ -347,6 +347,15 @@ const courseSchema = new mongoose.Schema({
   bundleIds: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'CourseBundle'
+  }],
+
+  // ==================== GLOBAL DISPATCHER ====================
+  // Linked Atomic Content references (Atomic Identity Engine)
+  linkedAtomicContent: [{
+    contentId: { type: String, required: true },
+    role: { type: String, required: true },
+    metadata: mongoose.Schema.Types.Mixed,
+    addedAt: { type: Date, default: Date.now }
   }]
 }, {
   timestamps: true,
@@ -367,7 +376,7 @@ courseSchema.index({ tags: 1 });
 courseSchema.index({ level: 1 });
 
 // ==================== PRE-SAVE MIDDLEWARE ====================
-courseSchema.pre('save', async function() {
+courseSchema.pre('save', async function () {
   // Auto-generate slug from title
   if (this.isModified('courseTitle') || !this.courseSlug) {
     let baseSlug = slugify(this.courseTitle, {
@@ -408,7 +417,7 @@ courseSchema.pre('save', async function() {
 });
 
 // ==================== INSTANCE METHODS ====================
-courseSchema.methods.submitForReview = async function() {
+courseSchema.methods.submitForReview = async function () {
   if (this.courseStatus !== 'Draft' && this.courseStatus !== 'Rejected') {
     throw new Error('Only draft or rejected courses can be submitted for review');
   }
@@ -428,7 +437,7 @@ courseSchema.methods.submitForReview = async function() {
   return this.save();
 };
 
-courseSchema.methods.approve = async function(reviewerId, reviewerRole, remarks = '') {
+courseSchema.methods.approve = async function (reviewerId, reviewerRole, remarks = '') {
   if (this.courseStatus !== 'Submitted' && this.courseStatus !== 'UnderReview') {
     throw new Error('Only submitted courses can be approved');
   }
@@ -449,7 +458,7 @@ courseSchema.methods.approve = async function(reviewerId, reviewerRole, remarks 
   return this.save();
 };
 
-courseSchema.methods.reject = async function(reviewerId, reviewerRole, reason) {
+courseSchema.methods.reject = async function (reviewerId, reviewerRole, reason) {
   if (this.courseStatus !== 'Submitted' && this.courseStatus !== 'UnderReview') {
     throw new Error('Only submitted courses can be rejected');
   }
@@ -474,7 +483,7 @@ courseSchema.methods.reject = async function(reviewerId, reviewerRole, reason) {
   return this.save();
 };
 
-courseSchema.methods.publish = async function() {
+courseSchema.methods.publish = async function () {
   if (this.courseStatus !== 'Approved') {
     throw new Error('Only approved courses can be published');
   }
@@ -486,7 +495,7 @@ courseSchema.methods.publish = async function() {
   return this.save();
 };
 
-courseSchema.methods.unpublish = async function() {
+courseSchema.methods.unpublish = async function () {
   if (this.courseStatus !== 'Published') {
     throw new Error('Only published courses can be unpublished');
   }
@@ -497,18 +506,18 @@ courseSchema.methods.unpublish = async function() {
   return this.save();
 };
 
-courseSchema.methods.archive = async function() {
+courseSchema.methods.archive = async function () {
   this.courseStatus = 'Archived';
   this.isActive = false;
   return this.save();
 };
 
-courseSchema.methods.incrementEnrollment = async function() {
+courseSchema.methods.incrementEnrollment = async function () {
   this.enrolledCount += 1;
   return this.save();
 };
 
-courseSchema.methods.updateRating = async function(newRating) {
+courseSchema.methods.updateRating = async function (newRating) {
   const oldTotal = this.rating * this.ratingCount;
   this.ratingCount += 1;
   this.rating = (oldTotal + newRating) / this.ratingCount;
@@ -522,7 +531,7 @@ courseSchema.methods.updateRating = async function(newRating) {
   return this.save();
 };
 
-courseSchema.methods.getEffectivePrice = function() {
+courseSchema.methods.getEffectivePrice = function () {
   if (this.pricingType === 'Free') return 0;
 
   if (!this.discount || !this.discount.isActive) return this.price;
@@ -540,7 +549,7 @@ courseSchema.methods.getEffectivePrice = function() {
 };
 
 // ==================== STATIC METHODS ====================
-courseSchema.statics.findPublishedCourses = function(filters = {}) {
+courseSchema.statics.findPublishedCourses = function (filters = {}) {
   return this.find({
     courseStatus: 'Published',
     isActive: true,
@@ -548,23 +557,23 @@ courseSchema.statics.findPublishedCourses = function(filters = {}) {
   });
 };
 
-courseSchema.statics.findByTeacher = function(teacherId) {
+courseSchema.statics.findByTeacher = function (teacherId) {
   return this.find({ teacherId });
 };
 
-courseSchema.statics.findByCategory = function(category, subCategory = null) {
+courseSchema.statics.findByCategory = function (category, subCategory = null) {
   const filter = { category, courseStatus: 'Published', isActive: true };
   if (subCategory) filter.subCategory = subCategory;
   return this.find(filter);
 };
 
-courseSchema.statics.findPendingReview = function() {
+courseSchema.statics.findPendingReview = function () {
   return this.find({
     courseStatus: { $in: ['Submitted', 'UnderReview'] }
   }).sort({ submittedAt: 1 });
 };
 
-courseSchema.statics.searchCourses = function(query, filters = {}) {
+courseSchema.statics.searchCourses = function (query, filters = {}) {
   const searchFilter = {
     $text: { $search: query },
     courseStatus: 'Published',
@@ -577,16 +586,16 @@ courseSchema.statics.searchCourses = function(query, filters = {}) {
 };
 
 // ==================== VIRTUALS ====================
-courseSchema.virtual('totalLessons').get(function() {
+courseSchema.virtual('totalLessons').get(function () {
   if (!this.syllabus) return 0;
   return this.syllabus.reduce((acc, module) => acc + (module.lessons?.length || 0), 0);
 });
 
-courseSchema.virtual('totalModules').get(function() {
+courseSchema.virtual('totalModules').get(function () {
   return this.syllabus?.length || 0;
 });
 
-courseSchema.virtual('isEnrollable').get(function() {
+courseSchema.virtual('isEnrollable').get(function () {
   if (this.courseStatus !== 'Published' || !this.isActive) return false;
   if (this.maxStudents && this.enrolledCount >= this.maxStudents) return false;
   return true;
