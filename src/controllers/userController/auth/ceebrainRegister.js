@@ -1,5 +1,15 @@
+const mongoose = require('mongoose');
 const { User } = require('../../../models/authModels');
 const { generateToken } = require('../../../utils/generateToken');
+
+const SEQ_KEY   = 'ceebrain_user';
+const SEQ_START = 100_000_000_001;
+
+const sequenceSchema = new mongoose.Schema(
+  { _id: String, seq: { type: Number, default: 0 } },
+  { collection: 'id_sequences' }
+);
+const Sequence = mongoose.models.IdSequence ?? mongoose.model('IdSequence', sequenceSchema);
 
 const GENDER_MAP = {
   male: 'Male',
@@ -18,15 +28,13 @@ const ceebrainRegister = async (req, res) => {
       bplCategory,
       underprivilegedCategory,
       password,
-      ceebrainId,
       agreeToFramework,
     } = req.body;
 
-    // Basic presence checks
-    if (!mobileNo || !password || !ceebrainId) {
+    if (!mobileNo || !password) {
       return res.status(400).json({
         status: false,
-        message: 'mobileNo, password, and ceebrainId are required',
+        message: 'mobileNo and password are required',
       });
     }
 
@@ -37,16 +45,17 @@ const ceebrainRegister = async (req, res) => {
       });
     }
 
-    // Duplicate checks
     const phoneExists = await User.findOne({ phone: mobileNo });
     if (phoneExists) {
       return res.status(409).json({ status: false, message: 'Mobile number already registered' });
     }
 
-    const ceebrainExists = await User.findOne({ ceebrainId });
-    if (ceebrainExists) {
-      return res.status(409).json({ status: false, message: 'Ceebrain ID already in use, please refresh and try again' });
-    }
+    const seqDoc = await Sequence.findOneAndUpdate(
+      { _id: SEQ_KEY },
+      { $inc: { seq: 1 } },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    const ceebrainId = (SEQ_START - 1 + seqDoc.seq).toString();
 
     const normalizedGender = GENDER_MAP[gender?.toLowerCase()] ?? undefined;
 

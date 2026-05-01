@@ -1,5 +1,5 @@
 const userRoute = require("express").Router();
-const { updateUserProfile, updateProfile, sendOTP, verifyOTP, signup, login, getUserById, getAllUsers, changePassword, applyTeacher, sendEmailOTP, verifyEmailOTP, ceebrainRegister } = require("../controllers/userController");
+const { updateUserProfile, updateProfile, sendOTP, verifyOTP, login, getUserById, getAllUsers, changePassword, applyTeacher, sendEmailOTP, verifyEmailOTP, ceebrainRegister, generateCeebrainId } = require("../controllers/userController");
 const { authenticateUser, fileUploader } = require("../middlewares");
 const validateRequest = require("../middlewares/validateRequest");
 const { signupSchema } = require("../validators");
@@ -26,7 +26,7 @@ const { signupSchema } = require("../validators");
  *     responses:
  *       201: { description: User created successfully }
  */
-userRoute.post("/signup", signup);
+
 
 /**
  * @swagger
@@ -56,6 +56,25 @@ userRoute.post("/signup", signup);
  *       201: { description: User registered successfully }
  */
 userRoute.post("/ceebrain-register", ceebrainRegister);
+
+/**
+ * @swagger
+ * /users/ceebrain-id:
+ *   get:
+ *     summary: Generate a unique Ceebrain ID
+ *     tags: [Users]
+ *     responses:
+ *       200:
+ *         description: A unique 12-digit Ceebrain ID
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status: { type: boolean }
+ *                 ceebrainId: { type: string }
+ */
+userRoute.get("/ceebrain-id", generateCeebrainId);
 
 /**
  * @swagger

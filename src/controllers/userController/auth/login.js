@@ -138,6 +138,76 @@ const login = async (req, res) => {
       });
     }
 
+    // ==================== MOBILE PASSWORD LOGIN ====================
+    if (method === 'MOBILE_PASSWORD') {
+      if (!phone || !password) {
+        return res.status(400).json({ status: false, message: "Phone number and password are required" });
+      }
+
+      const user = await User.findOne({ phone }).select('+password');
+      if (!user) {
+        return res.status(401).json({ status: false, message: "Invalid credentials" });
+      }
+      if (user.status === 'Suspended') {
+        return res.status(403).json({ status: false, message: "Your account has been suspended. Please contact support." });
+      }
+      if (user.isLocked()) {
+        return res.status(423).json({ status: false, message: "Account is temporarily locked due to too many failed attempts." });
+      }
+      if (user.authProvider !== 'MOBILE_PASSWORD') {
+        return res.status(400).json({ status: false, message: "This account does not use phone/password login." });
+      }
+
+      const isPasswordValid = await user.comparePassword(password);
+      if (!isPasswordValid) {
+        await user.incrementLoginAttempts();
+        return res.status(401).json({ status: false, message: "Invalid credentials" });
+      }
+      await user.resetLoginAttempts();
+
+      const token = generateToken({ id: user._id, authProvider: user.authProvider });
+      return res.status(200).json({
+        status: true,
+        message: "Login successful",
+        token,
+        user: { _id: user._id, name: user.name, email: user.email, phone: user.phone, ceebrainId: user.ceebrainId, authProvider: user.authProvider, selectedRole: user.selectedRole, verificationStatus: user.verificationStatus, status: user.status, profileImage: user.profileImage, lastLoginAt: user.lastLoginAt }
+      });
+    }
+
+    // ==================== CEEBRAIN ID LOGIN ====================
+    if (method === 'CEEBRAIN_ID') {
+      const { ceebrainId } = req.body;
+      if (!ceebrainId || !password) {
+        return res.status(400).json({ status: false, message: "Ceebrain ID and password are required" });
+      }
+
+      const user = await User.findOne({ ceebrainId }).select('+password');
+      if (!user) {
+        return res.status(401).json({ status: false, message: "Invalid credentials" });
+      }
+      if (user.status === 'Suspended') {
+        return res.status(403).json({ status: false, message: "Your account has been suspended. Please contact support." });
+      }
+      if (user.isLocked()) {
+        return res.status(423).json({ status: false, message: "Account is temporarily locked due to too many failed attempts." });
+      }
+
+      const isPasswordValid = await user.comparePassword(password);
+      if (!isPasswordValid) {
+        await user.incrementLoginAttempts();
+        return res.status(401).json({ status: false, message: "Invalid credentials" });
+      }
+      await user.resetLoginAttempts();
+
+      const token = generateToken({ id: user._id, authProvider: user.authProvider });
+      return res.status(200).json({
+        status: true,
+        message: "Login successful",
+        token,
+        user: { _id: user._id, name: user.name, email: user.email, phone: user.phone, ceebrainId: user.ceebrainId, authProvider: user.authProvider, selectedRole: user.selectedRole, verificationStatus: user.verificationStatus, status: user.status, profileImage: user.profileImage, lastLoginAt: user.lastLoginAt }
+      });
+    }
+
     return res.status(400).json({
       status: false,
       message: "Invalid login method"
