@@ -27,13 +27,14 @@ const {
 // ── Draft CRUD ─────────────────────────────────────────────────────────────────
 
 async function createDraft(ownerId, { title, contentType, domain, category, blocks = [], domainTags = [] }) {
-  const baseId   = await buildBaseId();
-  const hybridId = buildHybridId(baseId, { domain, contentType, category, version: 1, state: 'draft' });
+  const baseId           = await buildBaseId();
+  const resolvedCategory = category || 'general';
+  const hybridId         = buildHybridId(baseId, { domain, contentType, category: resolvedCategory, version: 1, state: 'draft' });
   const meta     = _computeMeta(blocks);
 
   return CreatorDraft.create({
     baseId, hybridId, ownerId,
-    title, contentType, domain, category,
+    title, contentType, domain, category: resolvedCategory,
     blocks, domainTags, version: 1, state: 'draft',
     ...meta,
     lastAutoSaved: new Date(),
@@ -46,6 +47,9 @@ async function updateDraft(baseId, ownerId, updates) {
   for (const key of allowed) {
     if (updates[key] !== undefined) patch[key] = updates[key];
   }
+  // Empty string fails schema required:true with runValidators — omit it so the
+  // stored value (set to 'general' on create) is preserved until user picks one.
+  if (patch.category === '') delete patch.category;
   if (patch.blocks) Object.assign(patch, _computeMeta(patch.blocks));
   patch.lastAutoSaved = new Date();
 

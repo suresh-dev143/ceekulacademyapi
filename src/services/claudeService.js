@@ -1073,6 +1073,72 @@ Generate a personalised explanation overlay.`;
   });
 }
 
+// ── Content Evaluator (Share / Send gate) ─────────────────────────────────────
+// Uses Haiku for low cost — output is max ~256 tokens of strict JSON.
+
+const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
+
+async function runContentEvaluator({ userId, title, subtitle, snippet }) {
+  const t0 = Date.now();
+
+  const userMessage = `Title: ${title}
+Subtitle: ${subtitle || '(none)'}
+Content Snippet: ${snippet || '(none)'}`;
+
+  const system = `You are a strict content evaluation system for an educational platform.
+
+Tasks:
+1. Safety Check: detect abusive/hateful language, explicit adult/sexual content, religious or politically sensitive content.
+2. Classification: classify as exactly one of: safe | sensitive | adult | abusive
+3. Relevance: score 0–1 for how well content body matches title and subtitle.
+4. Category Hint: suggest best fit from: Course, Workshop, Project, Research, Advertisement, Entertainment
+5. Routing: adult content may only appear in adult-enabled zones; abusive is never allowed.
+
+Output STRICT JSON only — no markdown fences, no explanation:
+{
+  "status": "allow|review|restrict",
+  "classification": "safe|sensitive|adult|abusive",
+  "relevance": 0.0,
+  "category": "Course|Workshop|Project|Research|Advertisement|Entertainment",
+  "issues": [],
+  "routing": { "allowed": true, "reason": "" }
+}
+
+Rules:
+- safe → status allow
+- sensitive → status review
+- adult → status restrict (routing.allowed=false) unless explicitly noted as adult-enabled
+- abusive → status restrict always`;
+
+  const task = await AgentTask.create({
+    agentType: 'content_evaluator', userId, sessionId: `eval_${userId}_${Date.now()}`,
+    prompt: userMessage, context: { system: system.slice(0, 200) }, status: 'running'
+  });
+
+  try {
+    const msg = await client.messages.create({
+      model: HAIKU_MODEL, max_tokens: 256, system,
+      messages: [{ role: 'user', content: userMessage }]
+    });
+
+    const text      = msg.content[0].text.trim();
+    const latencyMs = Date.now() - t0;
+    const cost      = (msg.usage.input_tokens + msg.usage.output_tokens) * COST_PER_TOKEN;
+
+    await AgentTask.findByIdAndUpdate(task._id, {
+      response: text, tokensIn: msg.usage.input_tokens, tokensOut: msg.usage.output_tokens,
+      latencyMs, costNeurons: cost, status: 'done'
+    });
+
+    // Strip possible markdown fences if model slips up
+    const clean = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+    return JSON.parse(clean);
+  } catch (err) {
+    await AgentTask.findByIdAndUpdate(task._id, { status: 'error', error: err.message });
+    throw err;
+  }
+}
+
 module.exports = {
   runWorkshopGenerator,
   runCoTeacher,
@@ -1096,5 +1162,7 @@ module.exports = {
   runOverlaySummarizer,
   runPersonalizedExplainer,
   // Content Validation Engine
-  runContentValidator
+  runContentValidator,
+  // Share / Send gate
+  runContentEvaluator
 };

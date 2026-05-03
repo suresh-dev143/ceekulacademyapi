@@ -1,22 +1,11 @@
 'use strict';
 
-/**
- * B) Collaboration Engine API — Create Content lifecycle routes
- *
- * Draft flow:    POST /creator/draft  →  PATCH /creator/draft/:baseId  →  action
- * Actions:       POST /creator/:baseId/save      (auto-save update)
- *                POST /creator/:baseId/share     (invite collaborators)
- *                POST /creator/:baseId/publish   (go live)
- * Collaboration: POST /creator/:baseId/delta     (submit content delta)
- *                GET  /creator/:baseId/summary   (current AI summary)
- *                GET  /creator/:baseId/contributions
- * Versioning:    POST /creator/:baseId/republish (new version from published)
- */
 
 const express = require('express');
 const router  = express.Router();
 
-const svc = require('../services/creatorService');
+const svc           = require('../services/creatorService');
+const transformSvc  = require('../services/contentTransformerService');
 const { authenticateUser } = require('../middlewares');
 
 router.use(authenticateUser);
@@ -29,14 +18,22 @@ function h(fn) {
     catch (err) { next(err); }
   };
 }
+router.get('/transform', h(async (req, res) => {
+  const { cid, type } = req.query;
+  if (!cid || !type) {
+    return res.status(400).json({ error: 'cid and type query params are required' });
+  }
+  const result = await transformSvc.transformContent(String(cid), String(type), req.user._id);
+  res.json({ data: result });
+}));
 
 // ── Draft CRUD ─────────────────────────────────────────────────────────────────
 
 // Create a new draft — assigns baseId and hybridId
 router.post('/draft', h(async (req, res) => {
   const { title, contentType, domain, category, blocks, domainTags } = req.body;
-  if (!title || !contentType || !domain || !category) {
-    return res.status(400).json({ error: 'title, contentType, domain, and category are required' });
+  if (!title || !contentType || !domain) {
+    return res.status(400).json({ error: 'title, contentType, and domain are required' });
   }
   const draft = await svc.createDraft(req.user._id, { title, contentType, domain, category, blocks, domainTags });
   res.status(201).json({ data: draft });

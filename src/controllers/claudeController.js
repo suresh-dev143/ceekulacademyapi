@@ -1,6 +1,6 @@
 'use strict';
 
-const { runCoTeacher, runAdGenerator, runWorkshopGenerator } = require('../services/claudeService');
+const { runCoTeacher, runAdGenerator, runWorkshopGenerator, runContentEvaluator } = require('../services/claudeService');
 const { getOrCreateTwin }              = require('../services/digitalTwinService');
 
 // POST /api/claude/co-teacher
@@ -58,4 +58,31 @@ async function generateWorkshop(req, res) {
   res.json({ status: true, data });
 }
 
-module.exports = { coTeacher, adCopy, generateWorkshop };
+// POST /api/claude/evaluate-content
+async function evaluateContent(req, res) {
+  const { title, subtitle, snippet } = req.body;
+  const userId = req.user._id;
+
+  if (!title?.trim()) return res.status(400).json({ status: false, message: 'title is required' });
+
+  const result = await runContentEvaluator({
+    userId,
+    title:    title.trim(),
+    subtitle: subtitle?.trim() ?? '',
+    snippet:  (snippet ?? '').slice(0, 300),
+  });
+
+  // Deterministic adult routing override — no extra AI call needed
+  if (result.classification === 'adult') {
+    const adultEnabled = (subtitle ?? '').toLowerCase().includes('[adult]');
+    result.routing.allowed = adultEnabled;
+    result.routing.reason  = adultEnabled
+      ? 'Adult zone enabled via subtitle flag'
+      : 'Adult content is restricted to adult-enabled zones only';
+    result.status = adultEnabled ? 'allow' : 'restrict';
+  }
+
+  res.json({ status: true, data: result });
+}
+
+module.exports = { coTeacher, adCopy, generateWorkshop, evaluateContent };
