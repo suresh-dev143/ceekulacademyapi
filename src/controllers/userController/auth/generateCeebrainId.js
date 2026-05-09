@@ -9,15 +9,13 @@ const sequenceSchema = new mongoose.Schema(
 );
 const Sequence = mongoose.models.IdSequence ?? mongoose.model('IdSequence', sequenceSchema);
 
+// Returns the next CeeBrain ID that would be assigned on registration,
+// without consuming a sequence slot.
 const generateCeebrainId = async (req, res) => {
   try {
-    const doc = await Sequence.findOneAndUpdate(
-      { _id: SEQ_KEY },
-      { $inc: { seq: 1 } },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
-
-    const ceebrainId = (SEQ_START - 1 + doc.seq).toString();
+    const doc = await Sequence.findOne({ _id: SEQ_KEY });
+    const currentSeq = doc?.seq ?? 0;
+    const ceebrainId = (SEQ_START + currentSeq).toString();
     return res.status(200).json({ status: true, ceebrainId });
   } catch (err) {
     console.error('GenerateCeebrainId Error:', err);

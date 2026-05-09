@@ -14,6 +14,7 @@ const createWorkshop = async (req, res) => {
       workshopDescription,
       expertDescription,
       threeHourPlan,
+      contentRef,
       schedules = []
     } = req.validatedBody;
 
@@ -60,6 +61,7 @@ const createWorkshop = async (req, res) => {
       expertDescription,
       createdBy,
       threeHourPlan,
+      contentRef: contentRef || null,
       schedules: mappedSchedules,
       status: 'draft'
     });

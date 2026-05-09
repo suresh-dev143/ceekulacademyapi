@@ -115,23 +115,24 @@ const workshopSchema = new mongoose.Schema({
     enum: ['draft', 'published', 'cancelled'],
     default: 'draft'
   },
+  // threeHourPlan is populated from the CID transform — not edited directly by users
   threeHourPlan: {
     hour1: {
-      title: { type: String, required: [true, 'Hour 1 title is required'] },
-      description: { type: String, required: [true, 'Hour 1 description is required'] },
-      expertAllowed: { type: Boolean, default: true },
+      title:             { type: String, default: '' },
+      description:       { type: String, default: '' },
+      expertAllowed:     { type: Boolean, default: true },
       instructorAllowed: { type: Boolean, default: false }
     },
     hour2: {
-      title: { type: String, default: 'Hands On' },
-      description: { type: String, required: [true, 'Hour 2 description is required'] },
-      expertAllowed: { type: Boolean, default: true },
-      instructorAllowed: { type: Boolean, default: true }
+      title:             { type: String, default: 'Hands On' },
+      description:       { type: String, default: '' },
+      expertAllowed:     { type: Boolean, default: true },
+      instructorAllowed: { type: Boolean, default: false }
     },
     hour3: {
-      title: { type: String, default: 'Project Discussion' },
-      description: { type: String, required: [true, 'Hour 3 description is required'] },
-      expertAllowed: { type: Boolean, default: true },
+      title:             { type: String, default: 'Project Discussion' },
+      description:       { type: String, default: '' },
+      expertAllowed:     { type: Boolean, default: true },
       instructorAllowed: { type: Boolean, default: true }
     }
   },
@@ -149,6 +150,35 @@ const workshopSchema = new mongoose.Schema({
     min: 0
   },
   
+  // ── Per-hour CID references (link to Create Page content) ──────────────────
+  contentRef: {
+    hour1: { cid: { type: String, default: null }, version: { type: Number, default: null } },
+    hour2: { cid: { type: String, default: null }, version: { type: Number, default: null } },
+    hour3: { cid: { type: String, default: null }, version: { type: Number, default: null } },
+  },
+
+  // ── Ad Configuration (applies to every hour's ad break) ────────────────────
+  // Ads flow after every 50 min of content across all Ceekul content types.
+  // Learners may replace the ad break with an activity from breakActivities.
+  // An empty breakActivities array means the platform default list is offered.
+  adConfig: {
+    contentDurationMinutes: { type: Number, default: 50 },
+    adBreakMinutes:         { type: Number, default: 10 },
+    filters: {
+      domains:    { type: [String], default: [] },
+      categories: { type: [String], default: [] },
+      keywords:   { type: [String], default: [] },
+    },
+    // Who can override the ad filter at runtime
+    overrideBy: { type: String, enum: ['creator', 'instructor', 'learner'], default: 'learner' },
+    // Activities learners may substitute for the ad break ([] = platform defaults)
+    breakActivities: {
+      type: [String],
+      enum: ['stretch', 'meditation', 'notes', 'quiz', 'discussion', 'walk', 'custom'],
+      default: []
+    }
+  },
+
   // ==================== GLOBAL DISPATCHER ====================
   // Linked Atomic Content references (Atomic Identity Engine)
   linkedAtomicContent: [{

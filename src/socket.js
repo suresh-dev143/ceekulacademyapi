@@ -35,6 +35,10 @@ let editorNS       = null;
 let chatNS         = null;
 let adaptiveNS     = null;
 let discussionNS   = null;
+let liveNS         = null;
+
+// channelName → Map<socketId, { userId, userName }>
+const liveRooms = new Map();
 
 // In-memory participant registry: lectureId → Map<socketId, participantInfo>
 const editorRooms = new Map();
@@ -141,7 +145,48 @@ function initSocket(httpServer) {
   // ── /discussion namespace — universal topic-based chat ───────────────────
   discussionNS = io.of('/discussion');
 
-  console.log('[Socket] Socket.io initialised (default + /editor + /chat + /adaptive + /discussion namespaces)');
+  // ── /live namespace — cost-free live room chat (replaces Agora RTM) ───────
+  liveNS = io.of('/live');
+
+  liveNS.on('connection', (socket) => {
+    const { channelName, userId, userName } = socket.handshake.query;
+    if (!channelName) { socket.disconnect(true); return; }
+
+    const room = `live:${channelName}`;
+    socket.join(room);
+
+    if (!liveRooms.has(channelName)) liveRooms.set(channelName, new Map());
+    liveRooms.get(channelName).set(socket.id, { userId, userName });
+
+    socket.to(room).emit('live:presence', { type: 'join', userId, userName });
+    console.log(`[Live] ${userName} joined live:${channelName}`);
+
+    socket.on('live:message', ({ text }) => {
+      if (!text || typeof text !== 'string' || !text.trim()) return;
+      const msg = {
+        id:         `${userId}-${Date.now()}`,
+        text:       text.trim(),
+        senderId:   userId,
+        senderName: userName,
+        timestamp:  new Date().toISOString(),
+        type:       'chat',
+      };
+      // Broadcast to all including sender so other tabs get it; sender uses optimistic append
+      socket.to(room).emit('live:message', msg);
+    });
+
+    socket.on('disconnect', () => {
+      const room_map = liveRooms.get(channelName);
+      if (room_map) {
+        room_map.delete(socket.id);
+        if (room_map.size === 0) liveRooms.delete(channelName);
+      }
+      socket.to(room).emit('live:presence', { type: 'leave', userId, userName });
+      console.log(`[Live] ${userName} left live:${channelName}`);
+    });
+  });
+
+  console.log('[Socket] Socket.io initialised (default + /editor + /chat + /adaptive + /discussion + /live namespaces)');
   return io;
 }
 
@@ -171,5 +216,9 @@ function getDiscussionNS() {
   if (!discussionNS) throw new Error('[Socket] Discussion namespace not initialised');
   return discussionNS;
 }
+function getLiveNS() {
+  if (!liveNS) throw new Error('[Socket] Live namespace not initialised');
+  return liveNS;
+}
 
-module.exports = { initSocket, getIO, getEditorNS, getChatNS, getAdaptiveNS, getDiscussionNS, editorRooms };
+module.exports = { initSocket, getIO, getEditorNS, getChatNS, getAdaptiveNS, getDiscussionNS, getLiveNS, editorRooms, liveRooms };

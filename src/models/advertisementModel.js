@@ -9,6 +9,17 @@ const advertisementSchema = new mongoose.Schema({
     index: true
   },
 
+  // ==================== UCE CONTENT REFERENCE ====================
+  // CID of the ad content in the Universal Commit Store (ck_...).
+  // Set when the advertiser commits content via POST /api/commit.
+  // All downstream systems use this ref — the media body is never duplicated.
+  contentCid: {
+    type: String,
+    trim: true,
+    index: true,
+    sparse: true,  // not required for legacy ads without UCE commit
+  },
+
   // ==================== IDENTITY ====================
   title: {
     type: String,

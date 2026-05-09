@@ -53,6 +53,7 @@ const creatorDraftSchema = new Schema(
 
     // ── Content metadata ───────────────────────────────────────────────────────
     title:       { type: String, required: true, trim: true, maxlength: 300 },
+    subtitle:    { type: String, trim: true, maxlength: 500, default: '' },
     contentType: { type: String, enum: ['L', 'H', 'P'], required: true },
     domain:      { type: String, required: true }, // 'education' | 'health' | ...
     category:    { type: String, required: true }, // key into CATEGORY_CODES

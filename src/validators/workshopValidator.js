@@ -58,6 +58,20 @@ const scheduleSchema = z.object({
     { message: 'Location is required for hybrid sessions', path: ['location'] }
   );
 
+const breakActivitySchema = z.enum(['stretch', 'meditation', 'notes', 'quiz', 'discussion', 'walk', 'custom']);
+
+const adConfigSchema = z.object({
+  contentDurationMinutes: z.number().min(1).max(120).optional(),
+  adBreakMinutes:         z.number().min(0).max(60).optional(),
+  filters: z.object({
+    domains:    z.array(z.string()).optional(),
+    categories: z.array(z.string()).optional(),
+    keywords:   z.array(z.string()).optional(),
+  }).optional(),
+  overrideBy:      z.enum(['creator', 'instructor', 'learner']).optional(),
+  breakActivities: z.array(breakActivitySchema).optional(),
+}).optional();
+
 const createWorkshopSchema = z.object({
   workshopTitle: z
     .string()
@@ -76,10 +90,16 @@ const createWorkshopSchema = z.object({
     .optional(),
 
   threeHourPlan: z.object({
-    hour1: z.object({ title: z.string().trim().min(1, 'Hour 1 title is required'), description: z.string().trim().min(1, 'Hour 1 description is required'), expertAllowed: z.boolean().optional(), instructorAllowed: z.boolean().optional() }),
-    hour2: z.object({ title: z.string().trim().default('Hands On'), description: z.string().trim().min(1, 'Hour 2 description is required'), expertAllowed: z.boolean().optional(), instructorAllowed: z.boolean().optional() }),
-    hour3: z.object({ title: z.string().trim().default('Project Discussion'), description: z.string().trim().min(1, 'Hour 3 description is required'), expertAllowed: z.boolean().optional(), instructorAllowed: z.boolean().optional() })
+    hour1: z.object({ title: z.string().trim().default(''), description: z.string().trim().default(''), expertAllowed: z.boolean().optional(), instructorAllowed: z.boolean().optional() }),
+    hour2: z.object({ title: z.string().trim().default('Hands On'), description: z.string().trim().default(''), expertAllowed: z.boolean().optional(), instructorAllowed: z.boolean().optional() }),
+    hour3: z.object({ title: z.string().trim().default('Project Discussion'), description: z.string().trim().default(''), expertAllowed: z.boolean().optional(), instructorAllowed: z.boolean().optional() })
   }).optional(),
+  contentRef: z.object({
+    hour1: z.object({ cid: z.string().nullable().optional(), version: z.number().nullable().optional() }).nullable().optional(),
+    hour2: z.object({ cid: z.string().nullable().optional(), version: z.number().nullable().optional() }).nullable().optional(),
+    hour3: z.object({ cid: z.string().nullable().optional(), version: z.number().nullable().optional() }).nullable().optional(),
+  }).nullable().optional(),
+  adConfig: adConfigSchema,
   schedules: z
     .array(scheduleSchema)
     .min(0, 'Schedules are optional during creation')
@@ -106,10 +126,16 @@ const updateWorkshopSchema = z.object({
     .optional(),
 
   threeHourPlan: z.object({
-    hour1: z.object({ title: z.string().trim().min(1, 'Hour 1 title is required'), description: z.string().trim().min(1, 'Hour 1 description is required'), expertAllowed: z.boolean().optional(), instructorAllowed: z.boolean().optional() }),
-    hour2: z.object({ title: z.string().trim().default('Hands On'), description: z.string().trim().min(1, 'Hour 2 description is required'), expertAllowed: z.boolean().optional(), instructorAllowed: z.boolean().optional() }),
-    hour3: z.object({ title: z.string().trim().default('Project Discussion'), description: z.string().trim().min(1, 'Hour 3 description is required'), expertAllowed: z.boolean().optional(), instructorAllowed: z.boolean().optional() })
+    hour1: z.object({ title: z.string().trim().default(''), description: z.string().trim().default(''), expertAllowed: z.boolean().optional(), instructorAllowed: z.boolean().optional() }),
+    hour2: z.object({ title: z.string().trim().default('Hands On'), description: z.string().trim().default(''), expertAllowed: z.boolean().optional(), instructorAllowed: z.boolean().optional() }),
+    hour3: z.object({ title: z.string().trim().default('Project Discussion'), description: z.string().trim().default(''), expertAllowed: z.boolean().optional(), instructorAllowed: z.boolean().optional() })
   }).optional(),
+  contentRef: z.object({
+    hour1: z.object({ cid: z.string().nullable().optional(), version: z.number().nullable().optional() }).nullable().optional(),
+    hour2: z.object({ cid: z.string().nullable().optional(), version: z.number().nullable().optional() }).nullable().optional(),
+    hour3: z.object({ cid: z.string().nullable().optional(), version: z.number().nullable().optional() }).nullable().optional(),
+  }).nullable().optional(),
+  adConfig: adConfigSchema,
   schedules: z
     .array(scheduleSchema)
     .min(0)

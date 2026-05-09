@@ -47,9 +47,20 @@ const myActivitiesSchema = new mongoose.Schema(
       required: [true, 'User ID is required'],
       unique: true
     },
+    ceebrainId: {
+      type: String,
+      index: true,
+      sparse: true
+    },
     activities: {
       type: [activitySchema],
       default: []
+    },
+    // Per-hour customisations keyed by hour (0–23).
+    // Each entry: { user_override?: string, custom_content?: CustomContent }
+    schedule_overrides: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {}
     }
   },
   {

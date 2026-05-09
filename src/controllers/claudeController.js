@@ -1,6 +1,6 @@
 'use strict';
 
-const { runCoTeacher, runAdGenerator, runWorkshopGenerator, runContentEvaluator } = require('../services/claudeService');
+const { runCoTeacher, runAdGenerator, runWorkshopGenerator, runContentEvaluator, runDqrg } = require('../services/claudeService');
 const { getOrCreateTwin }              = require('../services/digitalTwinService');
 
 // POST /api/claude/co-teacher
@@ -85,4 +85,30 @@ async function evaluateContent(req, res) {
   res.json({ status: true, data: result });
 }
 
-module.exports = { coTeacher, adCopy, generateWorkshop, evaluateContent };
+// POST /api/claude/dqrg
+async function dqrg(req, res) {
+  const { cid, cidVersion, dqrgMode, userMessage, contentContext, interactionHistory, groupContext } = req.body;
+  const userId = req.user._id;
+
+  if (!cid?.trim())         return res.status(400).json({ status: false, message: 'cid is required' });
+  if (!userMessage?.trim()) return res.status(400).json({ status: false, message: 'userMessage is required' });
+
+  const validModes = ['DISCUSS', 'QUESTION', 'RESEARCH', 'GRADE'];
+  const mode = validModes.includes(dqrgMode) ? dqrgMode : 'DISCUSS';
+
+  const result = await runDqrg({
+    userId,
+    sessionId:          `dqrg_${cid}_${userId}`,
+    cid:                cid.trim(),
+    cidVersion:         cidVersion ?? null,
+    dqrgMode:           mode,
+    userMessage:        userMessage.trim(),
+    contentContext:     contentContext ?? {},
+    interactionHistory: Array.isArray(interactionHistory) ? interactionHistory : [],
+    groupContext:       groupContext ?? null
+  });
+
+  res.json({ status: true, data: result });
+}
+
+module.exports = { coTeacher, adCopy, generateWorkshop, evaluateContent, dqrg };

@@ -12,5 +12,6 @@ router.post('/co-teacher',         ctrl.coTeacher);
 router.post('/ad-copy',            ctrl.adCopy);
 router.post('/generate-workshop',  ctrl.generateWorkshop);
 router.post('/evaluate-content',   ctrl.evaluateContent);
+router.post('/dqrg',               ctrl.dqrg);
 
 module.exports = router;

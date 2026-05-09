@@ -174,6 +174,32 @@ const appRoutes = (app) => {
   // Save Engine + Evolution Engine + Atomic ID
   app.use('/api/atomic', atomicRoute);
 
+  // ==================== SESSION LIFECYCLE ====================
+  // Live session CID commits: start → micro (30s) → end + AI summary
+  const sessionRoute = require('./session.route.js');
+  app.use('/api/sessions', sessionRoute);
+
+  // ==================== CID-BASED AD DELIVERY SYSTEM ====================
+  // O(1) delivery: GET /api/ads/delivery/:sessionKey
+  // Pre-scheduler:  POST /api/ads/precompute
+  // Inverted index: GET|POST /api/ads/index
+  const adDeliveryRoute = require('./adDelivery.route.js');
+  app.use('/api/ads', adDeliveryRoute);
+
+  // ==================== UNIVERSAL COMMIT & REFERENCE SYSTEM (UCRS) ====================
+  // Single write path: POST /api/commit
+  // Content resolution: GET /api/commit/content/:cid[/v/:version]
+  // Version history:    GET /api/commit/history/:logicalId
+  // Batch resolve:      POST /api/commit/resolve-many
+  // Full-text search:   GET /api/commit/search
+  const commitRoute = require('./commit.route.js');
+  app.use('/api/commit', commitRoute);
+
+  // ==================== UCRS INTERACTION COMMITS ====================
+  // Session-scoped semantic commits: chat, stream, annotations
+  const ucrsRoute = require('./ucrs.route.js');
+  app.use('/api/ucrs', ucrsRoute);
+
   // Error handling
   app.use(unspecifiedRoutesHandler);
   app.use(finalErrorHandler);

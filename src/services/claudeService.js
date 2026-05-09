@@ -1139,6 +1139,161 @@ Rules:
   }
 }
 
+// ── Session Post-Processor ────────────────────────────────────────────────────
+/**
+ * Called after a workshop session ends. Generates a summary, key topics,
+ * and learner insights from the session metadata.
+ * Returns: { summary, keyTopics: string[], insights: string[] }
+ */
+async function runSessionPostProcessor({ sessionCid, title, totalSecs, peakParticipants, totalMessages }) {
+  const mins = Math.round(totalSecs / 60);
+
+  const system = `You are a post-session intelligence agent for an educational live-session platform.
+
+Given session metadata, generate a concise, useful session record.
+
+Output ONLY valid JSON:
+{
+  "summary": "string — 2-3 sentence summary of what the session covered and its value",
+  "keyTopics": ["3-6 topic strings discussed"],
+  "insights": ["2-4 actionable insight strings for the host to improve future sessions"]
+}
+
+Rules:
+- summary must mention the session title and participation level.
+- keyTopics should be specific, not generic (e.g., "React useState hook" not "programming").
+- insights must be concrete and actionable, not platitudes.`;
+
+  const userMessage = `Session CID: ${sessionCid}
+Title: "${title}"
+Duration: ${mins} minutes
+Peak participants: ${peakParticipants}
+Total chat messages: ${totalMessages}
+
+Generate session record.`;
+
+  return _invoke({
+    agentType: 'chat_summarizer',
+    userId:    null,
+    sessionId: `session_post_${sessionCid}`,
+    system,
+    userMessage,
+    parseJson: true,
+    maxTokens: 512
+  });
+}
+
+// ── DQRG Content-Bound Intelligence ──────────────────────────────────────────
+
+const DQRG_OUTPUT_RULES = `
+HARD COST RULES (obey strictly):
+1. Check the interaction history first — if the answer already exists, compress and return it; do NOT regenerate.
+2. Prefer retrieval over generation, summarisation over explanation, structure over verbosity.
+3. Never repeat reasoning that appeared in a prior turn.
+4. If the learner's intent is ambiguous, respond with ONE clarifying question only — do not guess.
+5. Never answer about topics outside the active content CID.
+
+MANDATORY OUTPUT FORMAT — every reply must follow this exact structure:
+Key Insight: [1–3 lines — the essential answer, drawn only from the active content]
+CID Reference: [one term or concept from the active content that anchors this insight — omit line if not applicable]
+Next Action: [one concrete follow-up for the learner — omit line if not applicable]
+
+No long explanations. No storytelling. No repetition. Speak less, deliver more.`;
+
+const DQRG_SYSTEM = {
+  DISCUSS: `You are a content-attached AI tutor operating within the Ceekul DQRG Intelligence Layer.
+This chat exists ONLY for the content currently active in the learner's panel (identified by CID).
+
+Mode: DISCUSS — deep understanding via minimal, precise explanation.
+- Explain the concept using the content itself; draw analogies only from within the content.
+- Layer minimally: give the simplest correct insight first, extend only if the learner asks.
+- End with ONE guiding question or "Try this:" micro-challenge — never skip this.
+- If the learner seems confused, ask what specific part is unclear before explaining further.
+${DQRG_OUTPUT_RULES}`,
+
+  QUESTION: `You are a structured question-decomposition engine operating within the Ceekul DQRG Intelligence Layer.
+This chat exists ONLY for the content currently active in the learner's panel (identified by CID).
+
+Mode: QUESTION — break down, do not answer in full.
+- Decompose the learner's question into 2–3 sub-questions mapped to concepts in the content.
+- For each sub-question, give a one-line pointer to where the content addresses it.
+- Suggest 1 exploration path within the content — nothing external.
+- Use numbered sub-questions for clarity.
+${DQRG_OUTPUT_RULES}`,
+
+  RESEARCH: `You are a collaborative knowledge-synthesis agent operating within the Ceekul DQRG Intelligence Layer.
+This chat exists ONLY for the content currently active in the learner's panel (identified by CID).
+
+Mode: RESEARCH — synthesise delta knowledge only.
+- Combine the learner's input with the active content to produce only NEW insight (delta).
+- Highlight connections the learner may have missed — cite the content concept, not external sources.
+- Avoid raw answers; favour structured synthesis with clear reasoning chains (max 3 bullets).
+- Encourage incremental discovery — do not hand everything at once.
+${DQRG_OUTPUT_RULES}`,
+
+  GRADE: `You are an evaluation engine operating within the Ceekul DQRG Intelligence Layer.
+This chat exists ONLY for the content currently active in the learner's panel (identified by CID).
+
+Mode: GRADE — evaluate against content rubric, return structured score only.
+- Assess the learner's expressed understanding against the active content.
+- Score: Strong / Developing / Needs Work — one word, no hedging.
+- State exactly which content concept their reasoning addresses and which it misses.
+- End with ONE specific improvement suggestion tied to the content.
+${DQRG_OUTPUT_RULES}`
+};
+
+async function runDqrg({ userId, sessionId, cid, cidVersion, dqrgMode, userMessage, contentContext, interactionHistory = [] }) {
+  const mode   = DQRG_SYSTEM[dqrgMode] ? dqrgMode : 'DISCUSS';
+  const system = `${DQRG_SYSTEM[mode]}
+
+Active Content:
+CID: ${cid}${cidVersion ? ` v${cidVersion}` : ''}
+Title: ${contentContext?.title || 'Untitled'}
+Category: ${contentContext?.category || 'General'}
+${contentContext?.summary ? `Summary: ${contentContext.summary}` : ''}
+
+CRITICAL: Every response must be grounded in this content. If asked about something outside it, redirect the learner back to the content.`;
+
+  // Keep last 6 messages (3 turns) to control token cost
+  const historyMessages = interactionHistory.slice(-6).map(h => ({
+    role:    h.role,
+    content: h.content
+  }));
+
+  const t0   = Date.now();
+  const task = await AgentTask.create({
+    agentType: 'dqrg',
+    userId,
+    sessionId,
+    prompt:  userMessage,
+    context: { mode, cid, system: system.slice(0, 200) },
+    status:  'running'
+  });
+
+  try {
+    const msg = await client.messages.create({
+      model:      HAIKU_MODEL,
+      max_tokens: 320,
+      system,
+      messages:   [...historyMessages, { role: 'user', content: userMessage }]
+    });
+
+    const text      = msg.content[0].text.trim();
+    const latencyMs = Date.now() - t0;
+    const cost      = (msg.usage.input_tokens + msg.usage.output_tokens) * COST_PER_TOKEN;
+
+    await AgentTask.findByIdAndUpdate(task._id, {
+      response: text, tokensIn: msg.usage.input_tokens, tokensOut: msg.usage.output_tokens,
+      latencyMs, costNeurons: cost, status: 'done'
+    });
+
+    return { reply: text, mode, cid };
+  } catch (err) {
+    await AgentTask.findByIdAndUpdate(task._id, { status: 'failed', error: err.message });
+    throw err;
+  }
+}
+
 module.exports = {
   runWorkshopGenerator,
   runCoTeacher,
@@ -1164,5 +1319,9 @@ module.exports = {
   // Content Validation Engine
   runContentValidator,
   // Share / Send gate
-  runContentEvaluator
+  runContentEvaluator,
+  // DQRG Content-Bound Intelligence
+  runDqrg,
+  // Session lifecycle post-processor
+  runSessionPostProcessor
 };

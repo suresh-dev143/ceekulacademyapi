@@ -5,7 +5,13 @@ const agentTaskSchema = new Schema({
   agentType: {
     type: String,
     enum: ['co_teacher','content_optimizer','ad_generator',
-           'innovation_coach','twin_summary','research_mapper','workshop_generator'],
+           'innovation_coach','twin_summary','research_mapper','workshop_generator',
+           'live_edit_assistant','multimedia_enricher','quality_checker',
+           'chat_moderator','chat_summarizer','insight_extractor',
+           'micro_hook_generator','cinematic_writer','hypothesis_generator','atom_quality_writer',
+           'overlay_summarizer','personalized_explainer',
+           'content_validator','content_evaluator',
+           'dqrg'],
     required: true,
     index: true
   },

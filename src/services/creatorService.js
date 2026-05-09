@@ -26,7 +26,7 @@ const {
 
 // ── Draft CRUD ─────────────────────────────────────────────────────────────────
 
-async function createDraft(ownerId, { title, contentType, domain, category, blocks = [], domainTags = [] }) {
+async function createDraft(ownerId, { title, subtitle = '', contentType, domain, category, blocks = [], domainTags = [] }) {
   const baseId           = await buildBaseId();
   const resolvedCategory = category || 'general';
   const hybridId         = buildHybridId(baseId, { domain, contentType, category: resolvedCategory, version: 1, state: 'draft' });
@@ -34,7 +34,7 @@ async function createDraft(ownerId, { title, contentType, domain, category, bloc
 
   return CreatorDraft.create({
     baseId, hybridId, ownerId,
-    title, contentType, domain, category: resolvedCategory,
+    title, subtitle, contentType, domain, category: resolvedCategory,
     blocks, domainTags, version: 1, state: 'draft',
     ...meta,
     lastAutoSaved: new Date(),
@@ -42,7 +42,7 @@ async function createDraft(ownerId, { title, contentType, domain, category, bloc
 }
 
 async function updateDraft(baseId, ownerId, updates) {
-  const allowed = ['title', 'blocks', 'domainTags', 'category', 'domain'];
+  const allowed = ['title', 'subtitle', 'blocks', 'domainTags', 'category', 'domain'];
   const patch   = {};
   for (const key of allowed) {
     if (updates[key] !== undefined) patch[key] = updates[key];
@@ -61,18 +61,26 @@ async function updateDraft(baseId, ownerId, updates) {
 }
 
 async function getDraft(baseId, ownerId) {
-  return CreatorDraft.findOne({ baseId, ownerId }).lean();
+  const draft = await CreatorDraft.findOne({ baseId, ownerId }).lean();
+  if (draft) return draft;
+  return CreatorContent.findOne({ baseId, ownerId }).lean();
 }
 
 async function listDrafts(ownerId) {
-  return CreatorDraft.find({ ownerId })
-    .select('baseId hybridId title contentType domain category version wordCount createdAt updatedAt')
-    .sort({ updatedAt: -1 })
-    .lean();
+  const fields = 'baseId hybridId title subtitle contentType domain category version wordCount state createdAt updatedAt';
+  const [drafts, published] = await Promise.all([
+    CreatorDraft.find({ ownerId }).select(fields).lean(),
+    CreatorContent.find({ ownerId }).select(fields).lean(),
+  ]);
+  return [...drafts, ...published].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
 }
 
 async function deleteDraft(baseId, ownerId) {
-  return CreatorDraft.findOneAndDelete({ baseId, ownerId });
+  const deleted = await CreatorDraft.findOneAndDelete({ baseId, ownerId });
+  if (!deleted) {
+    return CreatorContent.findOneAndDelete({ baseId, ownerId });
+  }
+  return deleted;
 }
 
 // ── Share ─────────────────────────────────────────────────────────────────────
