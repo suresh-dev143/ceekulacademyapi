@@ -26,15 +26,14 @@ const {
 
 // ── Draft CRUD ─────────────────────────────────────────────────────────────────
 
-async function createDraft(ownerId, { title, subtitle = '', contentType, domain, category, blocks = [], domainTags = [] }) {
-  const baseId           = await buildBaseId();
-  const resolvedCategory = category || 'general';
-  const hybridId         = buildHybridId(baseId, { domain, contentType, category: resolvedCategory, version: 1, state: 'draft' });
+async function createDraft(ownerId, { title, subtitle = '', contentType, domain, contentTitle = '', blocks = [], domainTags = [] }) {
+  const baseId   = await buildBaseId();
+  const hybridId = buildHybridId(baseId, { domain, contentType, category: 'general', version: 1, state: 'draft' });
   const meta     = _computeMeta(blocks);
 
   return CreatorDraft.create({
     baseId, hybridId, ownerId,
-    title, subtitle, contentType, domain, category: resolvedCategory,
+    title, subtitle, contentType, domain, contentTitle,
     blocks, domainTags, version: 1, state: 'draft',
     ...meta,
     lastAutoSaved: new Date(),
@@ -42,14 +41,12 @@ async function createDraft(ownerId, { title, subtitle = '', contentType, domain,
 }
 
 async function updateDraft(baseId, ownerId, updates) {
-  const allowed = ['title', 'subtitle', 'blocks', 'domainTags', 'category', 'domain'];
+  const allowed = ['title', 'subtitle', 'blocks', 'domainTags', 'contentTitle', 'domain'];
   const patch   = {};
   for (const key of allowed) {
     if (updates[key] !== undefined) patch[key] = updates[key];
   }
-  // Empty string fails schema required:true with runValidators — omit it so the
-  // stored value (set to 'general' on create) is preserved until user picks one.
-  if (patch.category === '') delete patch.category;
+  if (patch.contentTitle === undefined) delete patch.contentTitle;
   if (patch.blocks) Object.assign(patch, _computeMeta(patch.blocks));
   patch.lastAutoSaved = new Date();
 
@@ -67,7 +64,7 @@ async function getDraft(baseId, ownerId) {
 }
 
 async function listDrafts(ownerId) {
-  const fields = 'baseId hybridId title subtitle contentType domain category version wordCount state createdAt updatedAt';
+  const fields = 'baseId hybridId title subtitle contentType domain contentTitle version wordCount state createdAt updatedAt';
   const [drafts, published] = await Promise.all([
     CreatorDraft.find({ ownerId }).select(fields).lean(),
     CreatorContent.find({ ownerId }).select(fields).lean(),
@@ -116,7 +113,7 @@ async function shareDraft(baseId, ownerId, { collaboratorIds = [] } = {}) {
         title:       draft.title,
         contentType: draft.contentType,
         domain:      draft.domain,
-        category:    draft.category,
+        contentTitle: draft.contentTitle,
         version:     draft.version,
         blocks:      draft.blocks,
         domainTags:  draft.domainTags,
@@ -236,7 +233,7 @@ async function republish(baseId, ownerId) {
     title:       source.title,
     contentType: source.contentType,
     domain:      source.domain,
-    category:    source.category,
+    contentTitle: source.contentTitle,
     version:     source.version + 1,
     blocks:      source.blocks,
     domainTags:  source.domainTags,

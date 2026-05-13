@@ -23,6 +23,7 @@ const { generateCid }       = require('./cidGeneratorService');
 const { runContentEvaluator } = require('./claudeService');
 const UceContent            = require('../models/uceContentModel');
 const UceVersionRegistry    = require('../models/uceVersionRegistryModel');
+const ledger                = require('./ucrsLedgerService');
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
@@ -46,6 +47,14 @@ async function commit({ source, contentType, payload, ownerId, parentCid = null,
   const existing = await UceContent.findOne({ cid }).lean();
   if (existing) {
     const versionEntry = await UceVersionRegistry.findOne({ cid }).lean();
+    // Fire-and-forget — dedup hit still recorded in ledger
+    ledger.emit({
+      eventType:  'CONTENT_COMMITTED',
+      actorId:    String(ownerId),
+      actorType:  'citizen',
+      resourceId: cid,
+      payload:    { fromDedupe: true, contentType, logicalId: versionEntry?.logicalId ?? null },
+    }).catch(() => {});
     return {
       cid,
       version:   versionEntry?.version   ?? 1,
@@ -126,6 +135,15 @@ async function commit({ source, contentType, payload, ownerId, parentCid = null,
     ownerId,
     sizeBytes,
   });
+
+  // Fire-and-forget ledger entry for new unique content
+  ledger.emit({
+    eventType:  'CONTENT_COMMITTED',
+    actorId:    String(ownerId),
+    actorType:  'citizen',
+    resourceId: cid,
+    payload:    { fromDedupe: false, contentType, logicalId, version, status },
+  }).catch(() => {});
 
   return { cid, version, logicalId, status, aiFlags, fromDedupe: false };
 }

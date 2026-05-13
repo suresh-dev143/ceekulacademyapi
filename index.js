@@ -10,6 +10,7 @@ const { initLiveEditService }   = require('./src/services/liveEditService');
 const { initChatService }       = require('./src/services/chatService');
 const { initAdaptiveService }    = require('./src/services/adaptiveSocketService');
 const { initDiscussionService }  = require('./src/services/discussionService');
+const { bootstrap: ucrsBootstrap } = require('./src/services/ucrsServiceRegistryService');
 const PORT     = process.env.PORT || 1003;
 const BASE_URL = `http://localhost:${PORT || 1003}`;
 
@@ -26,7 +27,9 @@ const BASE_URL = `http://localhost:${PORT || 1003}`;
     initAdaptiveService();    // attach /adaptive namespace event handlers
     initDiscussionService();  // attach /discussion namespace event handlers
 
-    // post script function should goes here before starting the server
+    // UCRS: auto-provision service registry on every startup
+    await ucrsBootstrap();
+
     httpServer.listen(PORT, () => console.log(`Server is running on ${BASE_URL}`));
     httpServer.on('error', shutdown);
   } catch (error) {

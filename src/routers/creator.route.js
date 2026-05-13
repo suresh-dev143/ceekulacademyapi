@@ -31,11 +31,11 @@ router.get('/transform', h(async (req, res) => {
 
 // Create a new draft — assigns baseId and hybridId
 router.post('/draft', h(async (req, res) => {
-  const { title, contentType, domain, category, blocks, domainTags } = req.body;
-  if (!title || !contentType || !domain) {
-    return res.status(400).json({ error: 'title, contentType, and domain are required' });
+  const { title, contentType, subtitle, domain, contentTitle, blocks, domainTags } = req.body;
+  if (!title || !contentType || !domain || !subtitle ) {
+    return res.status(400).json({ error: 'title, contentType, subtitle, and domain are required' });
   }
-  const draft = await svc.createDraft(req.user._id, { title, contentType, domain, category, blocks, domainTags });
+  const draft = await svc.createDraft(req.user._id, { title, contentType, subtitle, domain, contentTitle, blocks, domainTags });
   res.status(201).json({ data: draft });
 }));
 
@@ -43,6 +43,28 @@ router.post('/draft', h(async (req, res) => {
 router.get('/drafts', h(async (req, res) => {
   const drafts = await svc.listDrafts(req.user._id);
   res.json({ data: drafts });
+}));
+
+// Search content by programTitle / sectionTitle / contentTitle (debounced, used by Schedule + Enrol pages)
+router.get('/search', authenticateUser, h(async (req, res) => {
+  const { q, programTitle, sectionTitle, contentTitle, limit = 10 } = req.query;
+  const CreatorDraft   = require('../models/creatorDraftModel');
+  const CreatorContent = require('../models/creatorContentModel');
+  const filter = {};
+  if (q) {
+    const re = { $regex: q.trim(), $options: 'i' };
+    filter.$or = [{ title: re }, { subtitle: re }, { contentTitle: re }];
+  } else {
+    if (programTitle) filter.title        = { $regex: programTitle.trim(), $options: 'i' };
+    if (sectionTitle) filter.subtitle     = { $regex: sectionTitle.trim(), $options: 'i' };
+    if (contentTitle) filter.contentTitle = { $regex: contentTitle.trim(), $options: 'i' };
+  }
+  const fields = 'baseId hybridId title subtitle contentTitle contentType domain';
+  const [drafts, published] = await Promise.all([
+    CreatorDraft.find(filter).select(fields).limit(parseInt(limit)).lean(),
+    CreatorContent.find(filter).select(fields).limit(parseInt(limit)).lean(),
+  ]);
+  res.json({ data: [...drafts, ...published].slice(0, parseInt(limit)) });
 }));
 
 // Get a single draft

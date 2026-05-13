@@ -56,7 +56,7 @@ const creatorDraftSchema = new Schema(
     subtitle:    { type: String, trim: true, maxlength: 500, default: '' },
     contentType: { type: String, enum: ['L', 'H', 'P'], required: true },
     domain:      { type: String, required: true }, // 'education' | 'health' | ...
-    category:    { type: String, required: true }, // key into CATEGORY_CODES
+    contentTitle: { type: String, default: '' }, // free-text content title entered by user
     version:     { type: Number, default: 1 },
 
     // ── Block content (from canvas editor) ────────────────────────────────────

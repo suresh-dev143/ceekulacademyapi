@@ -10,6 +10,7 @@
 const express    = require('express');
 const router     = express.Router();
 const UCRSCommit = require('../models/ucrsCommitModel');
+const ledger     = require('../services/ucrsLedgerService');
 const { authenticateUser } = require('../middlewares');
 
 function h(fn) {
@@ -36,6 +37,18 @@ router.post('/', authenticateUser, h(async (req, res) => {
       reference,
       metadata:    metadata || {},
     });
+
+    ledger.emit({
+      eventType:  'COMMIT_CREATED',
+      actorId:    speakerId,
+      actorType:  'citizen',
+      resourceId: commitId,
+      sessionRef,
+      payload:    { type, reference },
+      ipHash:     req.ipHash ?? null,
+      userAgent:  req.headers['user-agent'] ?? null,
+    }).catch(() => {});
+
     res.status(201).json({ status: true, data: commit });
   } catch (err) {
     if (err.code === 11000) {
@@ -54,6 +67,14 @@ router.get('/:sessionRef', authenticateUser, h(async (req, res) => {
     .sort({ createdAt: 1 })
     .lean();
   res.json({ status: true, data: commits });
+}));
+
+// GET /api/ucrs/ledger/:actorId — actor event timeline (newest first, paginated)
+router.get('/ledger/:actorId', authenticateUser, h(async (req, res) => {
+  const limit  = Math.min(parseInt(req.query.limit)  || 50, 200);
+  const before = req.query.before ? new Date(req.query.before) : undefined;
+  const events = await ledger.getActorEvents(req.params.actorId, { limit, before });
+  res.json({ status: true, data: events });
 }));
 
 module.exports = router;

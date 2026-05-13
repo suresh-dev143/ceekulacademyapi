@@ -10,6 +10,7 @@ const {
 
 const validateRequest = require('./validateRequest');
 const authorizePartner = require('./authorizePartner');
+const ucrsVerify = require('./ucrsVerify');
 
 module.exports = {
     authenticateUser,
@@ -21,4 +22,5 @@ module.exports = {
     fileUploader,
     validateRequest,
     authorizePartner,
+    ucrsVerify,
 };

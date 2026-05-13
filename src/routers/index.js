@@ -200,6 +200,21 @@ const appRoutes = (app) => {
   const ucrsRoute = require('./ucrs.route.js');
   app.use('/api/ucrs', ucrsRoute);
 
+  // ==================== UCRS SCHEDULE ENGINE ====================
+  // CP-entity schedules: create, search, cancel
+  const scheduleRoute = require('./schedule.route.js');
+  app.use('/api/schedules', scheduleRoute);
+
+  // ==================== UCRS ENROLMENT ENGINE ====================
+  // Enrolment = policy tuple + display record; O(1) via Redis
+  const enrolmentRoute = require('./enrolment.route.js');
+  app.use('/api/enrolments', enrolmentRoute);
+
+  // ==================== UCRS COGNITIVE SERVICE FABRIC (ADMIN) ====================
+  // Identity (public keys), Capabilities, Policy Graph, Service Registry, Ledger
+  const ucrsAdminRoute = require('./ucrsAdmin.route.js');
+  app.use('/api/ucrs-admin', ucrsAdminRoute);
+
   // Error handling
   app.use(unspecifiedRoutesHandler);
   app.use(finalErrorHandler);

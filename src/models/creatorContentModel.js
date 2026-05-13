@@ -59,7 +59,7 @@ const creatorContentSchema = new Schema(
     subtitle:    { type: String, trim: true, maxlength: 500, default: '' },
     contentType: { type: String, enum: ['L', 'H', 'P'], required: true },
     domain:      { type: String, required: true },
-    category:    { type: String, required: true },
+    contentTitle: { type: String, default: '' },
     version:     { type: Number, default: 1 },
 
     // ── Blocks ─────────────────────────────────────────────────────────────────
