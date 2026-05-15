@@ -116,6 +116,45 @@ const _schemas = {
     peakParticipants: _num(p.peakParticipants),
     totalMessages:    _num(p.totalMessages),
   }),
+
+  // ── Architecture Knowledge Base ───────────────────────────────────────────────
+  // Committed once with trusted:true. Provides the stable CIDs that all
+  // architecture queries reference instead of repeating full text inline.
+
+  'architecture.spec': (p) => ({
+    contentType: 'architecture.spec',
+    specId:      _lc(p.specId),           // e.g. 'governance-roles', 'cg-id-system'
+    title:       _str(p.title),
+    version:     _str(p.version || '1.0.0'),
+    body:        _str(p.body),            // full spec text, normalized
+    keywords:    _keywords(p.keywords),
+    domain:      _lc(p.domain || 'governance'),
+  }),
+
+  // A single architectural question that references committed spec CIDs.
+  // Only the unique query text is hashed — shared context lives in specRefs.
+  'architecture.query': (p) => ({
+    contentType: 'architecture.query',
+    promptId:    _lc(p.promptId),         // e.g. 'prompt-01-governance'
+    title:       _str(p.title),
+    query:       _str(p.query),           // the unique question only
+    specRefs:    _keywords(p.specRefs),   // CIDs of referenced architecture.spec entries
+    parentCid:   _str(p.parentCid || ''),
+    model:       _lc(p.model || 'claude-opus-4-6'),
+  }),
+
+  // The Opus response committed back into UCE so future identical queries
+  // hit the dedup gate and return O(1) without a new Opus call.
+  'architecture.response': (p) => ({
+    contentType: 'architecture.response',
+    queryCid:    _str(p.queryCid),        // CID of the architecture.query that triggered this
+    title:       _str(p.title),
+    response:    _str(p.response),
+    model:       _lc(p.model || 'claude-opus-4-6'),
+    inputTokens: _num(p.inputTokens),
+    outputTokens:_num(p.outputTokens),
+    keywords:    _keywords(p.keywords),
+  }),
 };
 
 const CONTENT_TYPES = Object.keys(_schemas);
