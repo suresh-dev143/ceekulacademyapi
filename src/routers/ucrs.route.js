@@ -3,8 +3,10 @@
 /**
  * UCRS Interaction Commit Router
  *
- * POST  /api/ucrs          — store a semantic interaction commit (chat, stream events, etc.)
- * GET   /api/ucrs/:sessionRef  — retrieve all commits for a session reference
+ * POST  /api/ucrs                    — store a semantic interaction commit
+ * GET   /api/ucrs/content/:cid       — all UCRS commits that wrapped a UCE content CID (bridge query)
+ * GET   /api/ucrs/:sessionRef        — all commits for a session reference
+ * GET   /api/ucrs/ledger/:actorId    — actor event timeline
  */
 
 const express    = require('express');
@@ -21,7 +23,10 @@ function h(fn) {
 
 // POST /api/ucrs — fire-and-forget persist; idempotent on duplicate commitId
 router.post('/', authenticateUser, h(async (req, res) => {
-  const { commitId, type, sessionRef, speakerId, speakerName, content, semanticTags, parentCommit, reference, metadata } = req.body;
+  const {
+    commitId, type, sessionRef, speakerId, speakerName,
+    content, semanticTags, parentCommit, reference, contentCid, metadata,
+  } = req.body;
 
   if (!commitId || !type || !sessionRef || !speakerId || !reference) {
     return res.status(400).json({ status: false, message: 'commitId, type, sessionRef, speakerId, reference are required' });
@@ -30,12 +35,13 @@ router.post('/', authenticateUser, h(async (req, res) => {
   try {
     const commit = await UCRSCommit.create({
       commitId, type, sessionRef, speakerId,
-      speakerName: speakerName || 'Unknown',
-      content:     content     || '',
+      speakerName:  speakerName || 'Unknown',
+      content:      content     || '',
       semanticTags: Array.isArray(semanticTags) ? semanticTags : [],
       parentCommit: parentCommit || null,
       reference,
-      metadata:    metadata || {},
+      contentCid:   contentCid  || null,
+      metadata:     metadata    || {},
     });
 
     ledger.emit({
@@ -44,10 +50,10 @@ router.post('/', authenticateUser, h(async (req, res) => {
       actorType:  'citizen',
       resourceId: commitId,
       sessionRef,
-      payload:    { type, reference },
+      payload:    { type, reference, contentCid: contentCid || null },
       ipHash:     req.ipHash ?? null,
       userAgent:  req.headers['user-agent'] ?? null,
-    }).catch(() => {});
+    }).catch((err) => console.error('[ucrs] ledger.emit failed:', err.message));
 
     res.status(201).json({ status: true, data: commit });
   } catch (err) {
@@ -58,6 +64,25 @@ router.post('/', authenticateUser, h(async (req, res) => {
     }
     throw err;
   }
+}));
+
+// GET /api/ucrs/content/:cid — bridge query: all UCRS interactions that wrapped a UCE CID.
+// Must be declared before GET /:sessionRef to avoid the catch-all param matching "content".
+// Answers: "what was the interaction context at the time this content was committed?"
+router.get('/content/:cid', authenticateUser, h(async (req, res) => {
+  const limit  = Math.min(parseInt(req.query.limit) || 50, 200);
+  const before = req.query.before ? new Date(req.query.before) : undefined;
+
+  const filter = { contentCid: req.params.cid };
+  if (before) filter.createdAt = { $lt: before };
+
+  const commits = await UCRSCommit
+    .find(filter)
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .lean();
+
+  res.json({ status: true, data: commits });
 }));
 
 // GET /api/ucrs/:sessionRef — all commits for a session, oldest first

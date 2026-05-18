@@ -34,6 +34,21 @@ function buildEventHash({ eventId, eventType, actorId, occurredAt, previousHash,
   return sha256(stable);
 }
 
+// ── Internal: per-actor serialization lock ────────────────────────────────────
+// Ensures that two concurrent ledger emits for the same actor cannot both read
+// the same previousHash and fork the hash chain. Each actor gets a promise
+// queue; new emits chain onto the tail of the queue.
+
+const _actorLocks = new Map(); // actorId → Promise
+
+function _acquireLock(actorId) {
+  const prev = _actorLocks.get(actorId) ?? Promise.resolve();
+  let release;
+  const next = new Promise((resolve) => { release = resolve; });
+  _actorLocks.set(actorId, prev.then(() => next));
+  return prev.then(() => release);
+}
+
 // ── Internal: resolve the tip of an actor's chain ────────────────────────────
 
 async function resolveChainTip(actorId) {
@@ -72,6 +87,7 @@ async function emit(eventData) {
     resourceId  = null,
     payload     = {},
     sessionRef  = null,
+    traceId     = null,
     ipHash      = null,
     userAgent   = null,
     region      = null,
@@ -83,28 +99,36 @@ async function emit(eventData) {
   if (!actorId)   throw new Error('ucrsLedger.emit: actorId is required');
   if (!actorType) throw new Error('ucrsLedger.emit: actorType is required');
 
-  const eventId      = uuidv4();
-  const occurredAt   = new Date();
-  const previousHash = await resolveChainTip(actorId);
-  const eventHash    = buildEventHash({ eventId, eventType, actorId, occurredAt: occurredAt.toISOString(), previousHash, payload });
+  // Serialize per actor so concurrent emits cannot read the same previousHash
+  // and fork the chain. The lock is released after the DB write completes.
+  const release = await _acquireLock(actorId);
+  try {
+    const eventId      = uuidv4();
+    const occurredAt   = new Date();
+    const previousHash = await resolveChainTip(actorId);
+    const eventHash    = buildEventHash({ eventId, eventType, actorId, occurredAt: occurredAt.toISOString(), previousHash, payload });
 
-  return UCRSEvent.create({
-    eventId,
-    schemaVersion: UCRS_SCHEMA_VERSION,
-    eventType,
-    actorId,
-    actorType,
-    subjectId,
-    resourceId,
-    payload,
-    previousHash,
-    eventHash,
-    sessionRef,
-    ipHash,
-    userAgent,
-    region,
-    occurredAt,
-  });
+    return await UCRSEvent.create({
+      eventId,
+      schemaVersion: UCRS_SCHEMA_VERSION,
+      eventType,
+      actorId,
+      actorType,
+      subjectId,
+      resourceId,
+      payload,
+      previousHash,
+      eventHash,
+      sessionRef,
+      traceId,
+      ipHash,
+      userAgent,
+      region,
+      occurredAt,
+    });
+  } finally {
+    release();
+  }
 }
 
 // ── Public: query helpers ─────────────────────────────────────────────────────

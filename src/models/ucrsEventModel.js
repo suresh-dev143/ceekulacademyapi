@@ -86,6 +86,13 @@ const ucrsEventSchema = new mongoose.Schema({
     index: true,
   },
 
+  // ── Distributed trace ────────────────────────────────────────────────────
+  traceId: {
+    type: String,
+    default: null,
+    index: true,
+  },
+
   // ── Request metadata (privacy-safe) ──────────────────────────────────────
   ipHash: {
     type: String,

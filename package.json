@@ -4,7 +4,10 @@
   "description": "e-commerce",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node tests/screenE2eTest.js",
+    "test:skip-kb": "node tests/screenE2eTest.js --skip-kb",
+    "test:ws": "node tests/screenE2eTest.js --ws-only",
+    "test:rest": "node tests/screenE2eTest.js --rest-only",
     "dev": "nodemon index.js",
     "start": "node index.js"
   },
@@ -43,6 +46,7 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.1.5",
     "morgan": "^1.10.1",
+    "mqtt": "^5.15.1",
     "multer": "^2.0.2",
     "nodemailer": "^7.0.13",
     "nodemon": "^3.1.11",

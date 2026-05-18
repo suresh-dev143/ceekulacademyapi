@@ -6,7 +6,8 @@ const {
   passwordResetLimiter,
   courseCreationLimiter,
   uploadLimiter,
-  searchLimiter
+  searchLimiter,
+  aiLimiter,
 } = require('./rateLimiter');
 
 // Input Sanitization
@@ -65,6 +66,7 @@ module.exports = {
   courseCreationLimiter,
   uploadLimiter,
   searchLimiter,
+  aiLimiter,
 
   // Input Sanitization
   sanitizeBody,

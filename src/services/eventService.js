@@ -27,7 +27,8 @@ const EVENT_TYPES = {
   STUDENT_LEFT: 'student_left',
   SETTLEMENT_TRIGGERED: 'settlement_triggered',
   FRAUD_DETECTED: 'fraud_detected',
-  AD_BUDGET_EXHAUSTED: 'ad_budget_exhausted'
+  AD_BUDGET_EXHAUSTED: 'ad_budget_exhausted',
+  CONTENT_COMMITTED: 'content_committed',
 };
 
 // Internal emitter for same-process handlers
@@ -85,6 +86,30 @@ async function publishEvent(eventType, payload) {
     }
   }
 
+  return event;
+}
+
+/**
+ * Publish an event directly to Redis Streams only — no local emit.
+ * THROWS if Redis is unavailable or the write fails.
+ * Used exclusively by the outbox worker so it can detect failure and retry.
+ */
+async function publishEventToStream(eventType, payload) {
+  if (!streamsClient) {
+    throw new Error('[EventService] Redis Streams client not available');
+  }
+  const event = {
+    type:      eventType,
+    payload,
+    timestamp: new Date().toISOString(),
+    version:   '1.0',
+  };
+  const streamKey = `stream:${eventType}`;
+  await streamsClient.xAdd(streamKey, '*', { data: JSON.stringify(event) });
+  await streamsClient.xTrimApprox(streamKey, 10_000);
+  // Emit locally so in-process subscribers receive the event upon delivery
+  emitter.emit(eventType, event);
+  emitter.emit('*', event);
   return event;
 }
 
@@ -169,6 +194,7 @@ subscribe(EVENT_TYPES.LECTURE_ENDED, async (event) => {
 
 module.exports = {
   publishEvent,
+  publishEventToStream,
   subscribe,
   consumeStream,
   EVENT_TYPES

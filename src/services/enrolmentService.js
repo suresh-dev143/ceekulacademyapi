@@ -15,8 +15,10 @@
  * AI filter: lightweight coherence check on the enrolment context fields.
  */
 
+const { v4: uuidv4 } = require('uuid');
 const UCRSEnrolment   = require('../models/enrolmentModel');
 const UCRSSchedule    = require('../models/scheduleModel');
+const UCRSOutbox      = require('../models/ucrsOutboxModel');
 const policyService   = require('./ucrsPolicyService');
 const ledger          = require('./ucrsLedgerService');
 const { runContentEvaluator } = require('./claudeService');
@@ -106,6 +108,23 @@ async function enrol(citizenId, scheduleId, opts = {}) {
     payload:    { action: 'enrolled', scheduleCategory: schedule.category },
   }).catch(() => {});
 
+  // Outbox: guaranteed delivery to Redis Streams via UCRS event dispatcher
+  UCRSOutbox.create({
+    eventId:    uuidv4(),
+    actorId:    citizenId,
+    eventType:  'ENROLMENT_CREATED',
+    entityType: 'enrolment',
+    entityId:   `${citizenId}::${scheduleId}`,
+    contentCid: schedule.contentRef?.cid || null,
+    payload: {
+      citizenId,
+      scheduleId,
+      selfCbId:   selfCbId || null,
+      category:   schedule.category,
+      contentCid: schedule.contentRef?.cid || null,
+    },
+  }).catch(() => {});
+
   return { enrolment, isDuplicate: false };
 }
 
@@ -136,6 +155,24 @@ async function cancel(citizenId, scheduleId) {
     actorType:  'citizen',
     resourceId: scheduleId,
     payload:    { relation: 'member', reason: 'cancelled' },
+  }).catch(() => {});
+
+  ledger.emit({
+    eventType:  'ENTITY_STATE_CHANGED',
+    actorId:    citizenId,
+    actorType:  'citizen',
+    resourceId: String(enrolment._id),
+    subjectId:  citizenId,
+    payload:    { fromState: 'ACTIVE', toState: 'CANCELLED', scheduleId, reason: 'citizen_cancelled' },
+  }).catch(() => {});
+
+  UCRSOutbox.create({
+    eventId:    uuidv4(),
+    actorId:    citizenId,
+    eventType:  'ENROLMENT_CANCELLED',
+    entityType: 'enrolment',
+    entityId:   `${citizenId}::${scheduleId}`,
+    payload:    { citizenId, scheduleId, reason: 'citizen_cancelled' },
   }).catch(() => {});
 
   return enrolment;

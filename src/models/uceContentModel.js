@@ -34,6 +34,12 @@ const uceContentSchema = new Schema(
 
     // ── Ownership ─────────────────────────────────────────────────────────────
     ownerId:   { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    agentType: {
+      type:    String,
+      default: 'human',
+      enum:    ['human', 'ai', 'collective', 'ecosystem'],
+      index:   true,
+    },
 
     // ── Stats ─────────────────────────────────────────────────────────────────
     sizeBytes: { type: Number, default: 0 },

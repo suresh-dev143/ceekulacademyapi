@@ -29,6 +29,17 @@ const uceVersionRegistrySchema = new Schema(
     contentType: { type: String, required: true },
     ownerId:     { type: Schema.Types.ObjectId, ref: 'User', required: true },
     committedAt: { type: Date, default: Date.now, index: true },
+
+    // ── Normalizer version ────────────────────────────────────────────────────
+    // Records which normalizerService schema produced this CID.
+    // Allows detection of stale CIDs after normalizer schema upgrades.
+    normalizerVersion: { type: String, default: '1.0.0' },
+
+    // ── Semantic diff ─────────────────────────────────────────────────────────
+    // Null for v1 (no parent). For v2+, a structured field-by-field diff
+    // computed at commit time by semanticDiffService.
+    // Enables "what changed in this version?" with a single document read.
+    diff: { type: Schema.Types.Mixed, default: null },
   },
   {
     collection: 'uce_version_registry',

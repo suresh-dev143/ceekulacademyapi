@@ -20,8 +20,10 @@
 const crypto          = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 const UCRSSchedule    = require('../models/scheduleModel');
+const UCRSOutbox      = require('../models/ucrsOutboxModel');
 const ledger          = require('./ucrsLedgerService');
 const { runContentEvaluator } = require('./claudeService');
+const { matchAndNotify } = require('./subscriptionService');
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
@@ -58,6 +60,8 @@ async function createSchedule(creatorId, data) {
     contentRef = {}, instructorId = null, instructorName = null,
     scheduledDate, startTime, endTime,
     timezone = 'Asia/Kolkata', deliveryMode = 'online', capacity = null,
+    fee = 0, streamingFee = 0, streamingPlatform = null, workshopHour = null,
+    contentDescription = {}, expertProfile = {},
   } = data;
 
   // ── Step 1: Validate ───────────────────────────────────────────────────────
@@ -141,6 +145,12 @@ async function createSchedule(creatorId, data) {
     timezone:  norm.timezone,
     deliveryMode: norm.deliveryMode,
     capacity,
+    fee:               fee || 0,
+    streamingFee:      streamingFee || 0,
+    streamingPlatform: streamingPlatform || null,
+    workshopHour:      workshopHour || null,
+    contentDescription: contentDescription || {},
+    expertProfile:      expertProfile || {},
     status: 'ACTIVE',
     createdBy: creatorId,
     aiFlags,
@@ -162,6 +172,26 @@ async function createSchedule(creatorId, data) {
     actorType:  'citizen',
     resourceId: scheduleId,
     payload:    { scheduleId, startTime: norm.startTime, timezone: norm.timezone },
+  }).catch(() => {});
+
+  // Subscriptions: notify watchers of this program/category/instructor
+  matchAndNotify(schedule).catch(() => {});
+
+  // Outbox: guaranteed delivery to Redis Streams via UCRS event dispatcher
+  UCRSOutbox.create({
+    eventId:    uuidv4(),
+    actorId:    creatorId,
+    eventType:  'SCHEDULE_CREATED',
+    entityType: 'schedule',
+    entityId:   scheduleId,
+    contentCid: contentRef?.cid || null,
+    payload: {
+      scheduleId,
+      category:     norm.category,
+      programTitle: norm.programTitle,
+      contentCid:   contentRef?.cid || null,
+      scheduledDate: schedDate,
+    },
   }).catch(() => {});
 
   return { schedule, isDuplicate: false };
@@ -224,6 +254,24 @@ async function cancelSchedule(scheduleId, cancelledBy) {
     actorType:  'citizen',
     resourceId: scheduleId,
     payload:    { reason: 'cancelled' },
+  }).catch(() => {});
+
+  ledger.emit({
+    eventType:  'ENTITY_STATE_CHANGED',
+    actorId:    cancelledBy,
+    actorType:  'citizen',
+    resourceId: scheduleId,
+    payload:    { fromState: 'ACTIVE', toState: 'REVOKED', reason: 'cancelled' },
+  }).catch(() => {});
+
+  UCRSOutbox.create({
+    eventId:    uuidv4(),
+    actorId:    cancelledBy,
+    eventType:  'SCHEDULE_CANCELLED',
+    entityType: 'schedule',
+    entityId:   scheduleId,
+    contentCid: schedule.contentRef?.cid || null,
+    payload:    { scheduleId, reason: 'cancelled' },
   }).catch(() => {});
 
   return schedule;

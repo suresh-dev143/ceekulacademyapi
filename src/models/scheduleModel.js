@@ -90,6 +90,37 @@ const scheduleSchema = new mongoose.Schema({
     // null = unlimited
   },
 
+  // ── Session economics ──────────────────────────────────────────────────────
+  fee:               { type: Number, default: 0 },
+  streamingFee:      { type: Number, default: 0 },
+  streamingPlatform: { type: String, default: null },
+  workshopHour:      { type: Number, default: null, min: 1, max: 3 },
+
+  // ── Semantic content description (UCRS CD) ─────────────────────────────────
+  contentDescription: {
+    overview:          { type: String, default: '' },
+    outcomes:          [{ type: String }],
+    keyTopics:         [{ type: String }],
+    sessionFlow:       { type: mongoose.Schema.Types.Mixed, default: [] },
+    activities:        { type: String, default: '' },
+    transformGoals:    { type: String, default: '' },
+    tools:             [{ type: String }],
+    participationMode: { type: String, default: 'active' },
+    audienceTags:      [{ type: String }],
+  },
+
+  // ── Expert Profile (UCRS EP) ───────────────────────────────────────────────
+  expertProfile: {
+    trustLineage:   { type: String, default: '' },
+    expertise:      [{ type: String }],
+    teachingStyle:  { type: String, default: '' },
+    experience:     { type: Number, default: null },
+    mission:        { type: String, default: '' },
+    audienceFocus:  [{ type: String }],
+    availability:   { type: String, default: '' },
+    portfolioLinks: [{ type: String }],
+  },
+
   // ── Lifecycle ──────────────────────────────────────────────────────────────
   status: {
     type: String,

@@ -615,13 +615,15 @@ Extract pedagogical insights.`;
 
 // ── Core runner ───────────────────────────────────────────────────────────────
 
-async function _invoke({ agentType, userId, sessionId, system, userMessage, parseJson = false, maxTokens = 1024 }) {
+async function _invoke({ agentType, userId, sessionId, system, userMessage, parseJson = false, maxTokens = 1024, inputCid = null, traceId = null }) {
   const t0 = Date.now();
 
   const task = await AgentTask.create({
     agentType, userId, sessionId,
     prompt: userMessage,
     context: { system: system.slice(0, 200) },
+    inputCid,
+    traceId,
     status: 'running'
   });
 
@@ -1139,6 +1141,87 @@ Rules:
   }
 }
 
+// ── Architecture KB Query ─────────────────────────────────────────────────────
+/**
+ * Answers a single architectural question using Opus 4.7.
+ * specContext is the concatenated body text of referenced architecture.spec
+ * documents — pre-fetched by architectureKbService before calling here.
+ * Returns { response, inputTokens, outputTokens }.
+ */
+async function runArchitectureQuery({ queryText, specContext, model }) {
+  const chosenModel = model || 'claude-opus-4-7';
+  const t0 = Date.now();
+
+  const system = `You are the lead architect for the Ceekul civilization-scale semantic platform.
+
+You answer architectural questions with precision, drawing only from the specification documents
+provided. When no specs are provided, apply sound distributed-systems and semantic architecture principles.
+
+Response structure (always follow this exactly):
+## Summary
+2–3 sentences: what the question is really asking and the core answer.
+
+## Key Points
+Bullet list of 3–6 specific architectural facts, decisions, or data flows relevant to the question.
+
+## Considerations
+Risks, trade-offs, or implementation constraints the team must be aware of.
+
+## Recommendation
+One concise paragraph: the single best path forward given the constraints.
+
+Rules:
+- Reference spec document titles and specIds by name when available.
+- Be specific: name components, interfaces, collection names, event types.
+- Never pad with generic advice. If uncertain, say so explicitly.
+- Keep total response under 600 words.`;
+
+  const userMessage = specContext
+    ? `## Specification Context\n\n${specContext}\n\n---\n\n## Question\n\n${queryText}`
+    : `## Question\n\n${queryText}`;
+
+  const task = await AgentTask.create({
+    agentType: 'architecture_query',
+    userId:    null,
+    sessionId: `arch_query_${Date.now()}`,
+    prompt:    queryText.slice(0, 500),
+    context:   { system: system.slice(0, 200) },
+    status:    'running',
+  });
+
+  try {
+    const msg = await client.messages.create({
+      model:      chosenModel,
+      max_tokens: 1500,
+      system,
+      messages:   [{ role: 'user', content: userMessage }],
+    });
+
+    const text      = msg.content[0].text.trim();
+    const latencyMs = Date.now() - t0;
+    const cost      = (msg.usage.input_tokens + msg.usage.output_tokens) * COST_PER_TOKEN;
+
+    await AgentTask.findByIdAndUpdate(task._id, {
+      response:    text,
+      tokensIn:    msg.usage.input_tokens,
+      tokensOut:   msg.usage.output_tokens,
+      latencyMs,
+      costNeurons: cost,
+      status:      'done',
+    });
+
+    return {
+      taskId:       task._id,
+      response:     text,
+      inputTokens:  msg.usage.input_tokens,
+      outputTokens: msg.usage.output_tokens,
+    };
+  } catch (err) {
+    await AgentTask.findByIdAndUpdate(task._id, { status: 'failed', error: err.message });
+    throw err;
+  }
+}
+
 // ── Session Post-Processor ────────────────────────────────────────────────────
 /**
  * Called after a workshop session ends. Generates a summary, key topics,
@@ -1294,6 +1377,23 @@ CRITICAL: Every response must be grounded in this content. If asked about someth
   }
 }
 
+// ── Workspace Assistant ───────────────────────────────────────────────────────
+
+async function workspace_assistant({ message, context, panelContents, userId }) {
+  return _invoke({
+    userId,
+    agentType: 'workspace_assistant',
+    model:     HAIKU_MODEL,
+    system: `You are the Ceekul Semantic OS workspace assistant.
+The user is currently in context: "${context || 'home'}".
+Open panels: ${(panelContents || []).join(', ') || 'none'}.
+Answer concisely. If the question relates to learning, teaching, or the Ceekul Academy platform, focus on that. Be sharp — this is a power-user workspace.`,
+    userMessage: String(message || ''),
+    maxTokens: 600,
+    parseJson: false,
+  });
+}
+
 module.exports = {
   runWorkshopGenerator,
   runCoTeacher,
@@ -1323,5 +1423,9 @@ module.exports = {
   // DQRG Content-Bound Intelligence
   runDqrg,
   // Session lifecycle post-processor
-  runSessionPostProcessor
+  runSessionPostProcessor,
+  // Architecture KB
+  runArchitectureQuery,
+  // Workspace AI co-pilot
+  workspace_assistant,
 };

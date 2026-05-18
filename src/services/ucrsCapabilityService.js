@@ -265,6 +265,14 @@ async function revoke(capabilityId, revokedBy, reason = '') {
     payload: { capabilityId, cascadeCount: toRevoke.length, reason },
   }).catch(() => {});
 
+  ledger.emit({
+    eventType:  'ENTITY_STATE_CHANGED',
+    actorId:    revokedBy,
+    actorType:  'citizen',
+    resourceId: capabilityId,
+    payload:    { fromState: 'ACTIVE', toState: 'REVOKED', cascadeCount: toRevoke.length, reason },
+  }).catch(() => {});
+
   return toRevoke.length;
 }
 

@@ -14,6 +14,32 @@
  * Supported content types: lecture | workshop-hour | research | ad | product
  */
 
+// ── Screen helpers ────────────────────────────────────────────────────────────
+
+// Bucket exact pixel widths into size classes so two iPhones with slightly
+// different resolutions produce the same layout CID — enabling dedup across
+// the real device population.
+function _viewportClass(width) {
+  const w = Number(width) || 0;
+  if (w <= 480)  return 'xs';   // wearable, small phone
+  if (w <= 768)  return 'sm';   // phone
+  if (w <= 1024) return 'md';   // tablet, large phone landscape
+  if (w <= 1440) return 'lg';   // laptop
+  return 'xl';                  // desktop, large monitor
+}
+
+function _screenComponents(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr.map((c, i) => ({
+    id:      _str(c.id) || `c${i}`,
+    type:    _lc(c.type || 'text'),   // text|button|image|list|input|nav|card|modal|divider
+    content: _str(c.content || ''),
+    visible: c.visible !== false,
+    order:   _num(c.order ?? i),
+    props:   c.props && typeof c.props === 'object' ? c.props : {},
+  })).sort((a, b) => a.order - b.order);
+}
+
 // ── Primitive helpers ─────────────────────────────────────────────────────────
 
 function _str(v) { return typeof v === 'string' ? v.trim() : ''; }
@@ -155,6 +181,34 @@ const _schemas = {
     outputTokens:_num(p.outputTokens),
     keywords:    _keywords(p.keywords),
   }),
+
+  // ── Evolving Screen ───────────────────────────────────────────────────────────
+  // Viewport is bucketed to xs/sm/md/lg/xl so two phones with slightly different
+  // resolutions share the same layout CID — enabling O(1) dedup across the real
+  // device population without any per-pixel divergence.
+
+  'screen-layout': (p) => ({
+    contentType:   'screen-layout',
+    deviceType:    _lc(p.deviceType   || 'mobile'),   // mobile|tablet|laptop|desktop|wearable|machine
+    viewportClass: _viewportClass(p.viewport?.width || 0),
+    layoutType:    _lc(p.layoutType   || 'stack'),     // stack|grid|tabs|drawer|modal|split
+    context:       _lc(p.context      || 'home'),      // route/page identifier
+    theme:         _lc(p.theme        || 'default'),
+    components:    _screenComponents(p.components),
+    keywords:      _keywords(p.keywords),
+  }),
+
+  // A normalised user instruction — touch, click, voice, gesture, text input.
+  // fromCid is the layout CID that was active when the instruction was issued,
+  // enabling lineage tracing across the screen evolution chain.
+  'ui-instruction': (p) => ({
+    contentType:     'ui-instruction',
+    instructionType: _lc(p.instructionType || 'tap'),  // tap|click|swipe|input|voice|gesture
+    target:          _str(p.target),                   // component id or semantic label
+    context:         _lc(p.context || ''),             // route context at instruction time
+    value:           _str(p.value  || ''),             // typed text, voice transcript, etc.
+    fromCid:         _str(p.fromCid || ''),            // active layout CID at instruction time
+  }),
 };
 
 const CONTENT_TYPES = Object.keys(_schemas);
@@ -173,4 +227,7 @@ function normalize(contentType, payload) {
   return schema(payload);
 }
 
-module.exports = { normalize, CONTENT_TYPES };
+// Increment this when any normalizer schema changes so stale CIDs can be detected.
+const NORMALIZER_VERSION = '1.0.0';
+
+module.exports = { normalize, CONTENT_TYPES, NORMALIZER_VERSION };

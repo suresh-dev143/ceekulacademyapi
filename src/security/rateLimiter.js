@@ -95,6 +95,23 @@ const searchLimiter = rateLimit({
   legacyHeaders: false
 });
 
+// AI-calling endpoint limiter — applied to POST /api/commit and POST /api/architecture/query.
+// Each unique content or query triggers at least one Claude API call; this prevents budget exhaustion.
+const aiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20,
+  message: {
+    status: false,
+    message: 'AI request limit reached. Maximum 20 AI-powered requests per 15 minutes per IP.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => {
+    const trustedIPs = process.env.TRUSTED_IPS?.split(',') || [];
+    return trustedIPs.includes(req.ip);
+  }
+});
+
 module.exports = {
   apiLimiter,
   authLimiter,
@@ -102,5 +119,6 @@ module.exports = {
   passwordResetLimiter,
   courseCreationLimiter,
   uploadLimiter,
-  searchLimiter
+  searchLimiter,
+  aiLimiter,
 };

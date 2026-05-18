@@ -123,6 +123,9 @@ const appRoutes = (app) => {
   // Claude agents: co-teacher chat, contextual ad copy
   app.use('/api/claude', claudeRoute);
 
+  // Workspace AI co-pilot: context-aware assistant for the multi-panel workspace
+  app.use('/api/ai', require('./aiAssist.route'));
+
   // Digital twin: learner skill graph, cognitive profile, AI summary
   app.use('/api/digital-twin', digitalTwinRoute);
 
@@ -165,6 +168,12 @@ const appRoutes = (app) => {
   // Non-monetary participation units: FUN / CUN / SUN / My Neurons
   // Portal NEVER handles money — all money flows via external entity escrows
   app.use('/api/neurons', neuronRoute);
+
+  // ==================== WELFARE SYSTEM (CG100000000000) ====================
+  // Global need-first welfare: FUN (basic), CUN (learning), SUN (emergency)
+  // Priority set by Executive Council; disbursement after provider confirms
+  const welfareRoute = require('./welfare.route.js');
+  app.use('/api/welfare', welfareRoute);
   // CEEGROUP: collective entities with 15-digit IDs, shared neuron buckets
   app.use('/api/ceegroups', ceegroupRoute);
   // Payment: Cramib-initiated sessions + Razorpay verification + neuron credit
@@ -214,6 +223,59 @@ const appRoutes = (app) => {
   // Identity (public keys), Capabilities, Policy Graph, Service Registry, Ledger
   const ucrsAdminRoute = require('./ucrsAdmin.route.js');
   app.use('/api/ucrs-admin', ucrsAdminRoute);
+
+  // ==================== ARCHITECTURE KNOWLEDGE BASE ====================
+  // Specs: POST/GET /api/architecture/spec(s)
+  // Queries: POST /api/architecture/query  (O(1) cache after first Opus call)
+  // Responses: GET /api/architecture/response/:queryCid
+  const architectureKbRoute = require('./architectureKb.route.js');
+  app.use('/api/architecture', architectureKbRoute);
+
+  // ==================== EVOLVING SCREEN ====================
+  // Adaptive UI state: init, instruction, history — WebSocket at /screen namespace
+  const screenRoute = require('./screen.route.js');
+  app.use('/api/screen', screenRoute);
+
+  // ==================== UCRS SEMANTIC GRAPH (Phase 4) ====================
+  // Read-only intelligence layer: program trees, reuse maps, impact analysis
+  // GET /api/graph/program, /content/:cid/reuse, /content/:cid/impact, /instructor/:id, /consistency
+  const semanticGraphRoute = require('./semanticGraph.route.js');
+  app.use('/api/graph', semanticGraphRoute);
+
+  // ==================== EVENT SYSTEM (Phase 5) ====================
+  // Replay, outbox observability, self-healing admin
+  // GET /api/events/replay/:entityId, /replay/cid/:cid, /outbox/stats, /health
+  // POST /api/events/heal
+  const eventsRoute = require('./events.route.js');
+  app.use('/api/events', eventsRoute);
+
+  // ==================== WORKFLOW ENGINE (Phase 6) ====================
+  // Semantic orchestration + temporary compute: stats, list, trigger, purge
+  // GET /api/workflows/stats, GET /api/workflows, GET /api/workflows/:id
+  // POST /api/workflows/trigger, DELETE /api/workflows/failed
+  const workflowRoute = require('./workflow.route.js');
+  app.use('/api/workflows', workflowRoute);
+
+  // ==================== GRAPH ANALYTICS + SUBSCRIPTIONS (Phase 7) ====================
+  // Analytics: programs, content reuse, instructor reach, velocity, drift, vitality, audit
+  // Subscriptions: POST/GET/DELETE /api/analytics/subscriptions
+  const analyticsRoute = require('./analytics.route.js');
+  app.use('/api/analytics', analyticsRoute);
+
+  // ==================== HOME FEED (Pre-Homepage) ====================
+  // Aggregated feed: enrolled, discovery, trending, notifications, need signals
+  // GET /api/home/feed     — full homepage payload (one call)
+  // GET /api/home/discovery — paginated discovery with cinematic metadata
+  const homeRoute = require('./home.route.js');
+  app.use('/api/home', homeRoute);
+
+  // ==================== USER EXPERIENCE PROFILE ====================
+  // Persistent rendering preferences + device capability registration
+  // GET/PUT  /api/me/experience       — animation level, XR interest, color scheme
+  // POST     /api/me/device           — register device capabilities (on app launch)
+  // POST     /api/me/experience/onboarding — track onboarding progress
+  const experienceProfileRoute = require('./experienceProfile.route.js');
+  app.use('/api/me', experienceProfileRoute);
 
   // Error handling
   app.use(unspecifiedRoutesHandler);

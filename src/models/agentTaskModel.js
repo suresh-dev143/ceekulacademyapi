@@ -11,7 +11,7 @@ const agentTaskSchema = new Schema({
            'micro_hook_generator','cinematic_writer','hypothesis_generator','atom_quality_writer',
            'overlay_summarizer','personalized_explainer',
            'content_validator','content_evaluator',
-           'dqrg'],
+           'dqrg','architecture_query','workspace_assistant'],
     required: true,
     index: true
   },
@@ -21,12 +21,17 @@ const agentTaskSchema = new Schema({
   // Input
   prompt:    { type: String, required: true },
   context:   { type: Schema.Types.Mixed },
+  inputCid:  { type: String, default: null, index: true },   // UCE CID of the content that triggered this task
 
   // Output
   response:  { type: String },
+  outputCid: { type: String, default: null, index: true },   // UCE CID of the committed agent response
   tokensIn:  { type: Number, default: 0 },
   tokensOut: { type: Number, default: 0 },
   latencyMs: { type: Number, default: 0 },
+
+  // Observability
+  traceId:   { type: String, default: null, index: true },
 
   status: {
     type: String,

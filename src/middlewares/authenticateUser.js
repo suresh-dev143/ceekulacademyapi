@@ -8,7 +8,7 @@ const authenticateUser = async (req, res, next) => {
     const token = authHeader && authHeader.split(' ')[1];
 
     const legit = verifyAccessToken(token);
-    const user = await User.findById(legit.id);
+    const user = await User.findById(legit.id).lean();
     if (user) {
       req.user = user;
       req.token = token;

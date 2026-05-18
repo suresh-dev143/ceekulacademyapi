@@ -18,6 +18,7 @@ const {
   apiLimiter,
   authLimiter,
   otpLimiter,
+  aiLimiter,
   sanitizeBody,
   sanitizeQuery,
   requestTracker,
@@ -58,6 +59,10 @@ app.use(requestTracker);
 // ==================== RATE LIMITING ====================
 // Apply general API rate limiter
 app.use('/api', apiLimiter);
+
+// AI-calling endpoints: tighter limit (20/15min) to protect Anthropic API budget
+app.use('/api/commit', aiLimiter);
+app.use('/api/architecture/query', aiLimiter);
 
 // Stricter limits for auth endpoints
 app.use('/users/login', authLimiter);
@@ -105,11 +110,15 @@ appRoutes(app);
 
 // ==================== HEALTH CHECK ====================
 app.get('/health', (req, res) => {
+  const mongoose = require('mongoose');
+  const DB_STATES = ['disconnected', 'connected', 'connecting', 'disconnecting'];
+  const dbState = DB_STATES[mongoose.connection.readyState] || 'unknown';
   res.status(200).json({
     status: 'OK',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    db: { state: dbState, name: mongoose.connection.name || null },
   });
 });
 
